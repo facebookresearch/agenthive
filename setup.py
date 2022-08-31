@@ -136,6 +136,7 @@ def _main():
             "numpy",
             "packaging",
             "cloudpickle",
+            "hydra-core",
         ],
         zip_safe=False,
         extra_requires={

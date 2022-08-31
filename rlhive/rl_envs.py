@@ -9,9 +9,9 @@ from torchrl.data import (
     UnboundedContinuousTensorSpec,
     NdBoundedTensorSpec,
 )
-from torchrl.envs import GymEnv
+from torchrl.envs.libs.gym import GymEnv
 from torchrl.envs.libs.gym import _has_gym, _gym_to_torchrl_spec_transform
-from torchrl.trainers.helpers.envs import LIBS
+from torchrl.envs.transforms import R3MTransform, CatTensors, TransformedEnv, Compose
 
 
 class RoboHiveEnv(GymEnv):
@@ -142,4 +142,23 @@ class RoboHiveEnv(GymEnv):
         return out
 
 
-LIBS["mj_envs"] = RoboHiveEnv
+def make_r3m_env(env_name, model_name="resnet50", download=True, **kwargs):
+    base_env = RoboHiveEnv(env_name, from_pixels=True, pixels_only=False)
+    vec_keys = [k for k in base_env.observation_spec.keys() if k not in "next_pixels"]
+    env = TransformedEnv(
+        base_env,
+        Compose(
+            R3MTransform(
+                model_name,
+                keys_in=["next_pixels"],
+                keys_out=["next_pixel_r3m"],
+                download=download,
+                **kwargs,
+            ),
+            CatTensors(
+                keys_in=["next_pixel_r3m", *vec_keys], out_key="next_observation_vector"
+            ),
+        ),
+    )
+    return env
+

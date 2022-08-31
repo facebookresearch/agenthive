@@ -8,10 +8,10 @@
 import os
 from pathlib import Path
 
-from gym.envs.registration import register
-
-from mj_envs.envs.multi_task.common.franka_kitchen_v1 import KitchenFrankaFixed
 import mj_envs.envs.multi_task.substeps1
+from gym.envs.registration import register
+from mj_envs.envs.multi_task.common.franka_kitchen_v1 import KitchenFrankaFixed
+
 visual_obs_keys_wt = mj_envs.envs.multi_task.substeps1.visual_obs_keys_wt
 
 
@@ -21,6 +21,7 @@ class set_directory(object):
     Args:
         path (Path): The path to the cwd
     """
+
     def __init__(self, path: Path):
         self.path = path
         self.origin = Path().absolute()
@@ -35,7 +36,9 @@ class set_directory(object):
         def new_fun(*args, **kwargs):
             with set_directory(Path(self.path)):
                 return fun(*args, **kwargs)
+
         return new_fun
+
 
 CURR_DIR = mj_envs.envs.multi_task.substeps1.CURR_DIR
 MODEL_PATH = mj_envs.envs.multi_task.substeps1.MODEL_PATH
@@ -43,6 +46,7 @@ CONFIG_PATH = mj_envs.envs.multi_task.substeps1.CONFIG_PATH
 RANDOM_ENTRY_POINT = mj_envs.envs.multi_task.substeps1.RANDOM_ENTRY_POINT
 FIXED_ENTRY_POINT = mj_envs.envs.multi_task.substeps1.FIXED_ENTRY_POINT
 ENTRY_POINT = RANDOM_ENTRY_POINT
+
 
 @set_directory(CURR_DIR)
 def register_kitchen_envs():
@@ -338,6 +342,7 @@ def register_kitchen_envs():
         },
     )
 
+
 @set_directory(CURR_DIR)
 def register_franka_envs():
     # Franka Appliance ======================================================================
@@ -402,7 +407,8 @@ def register_franka_envs():
         max_episode_steps=50,
         kwargs={
             "model_path": CURR_DIR + "/../common/slidecabinet/franka_slidecabinet.xml",
-            "config_path": CURR_DIR + "/../common/slidecabinet/franka_slidecabinet.config",
+            "config_path": CURR_DIR
+            + "/../common/slidecabinet/franka_slidecabinet.config",
             "obj_init": {"slidedoor_joint": 0},
             "obj_goal": {"slidedoor_joint": 0.44},
             "obj_interaction_site": ("slide_site",),
@@ -416,7 +422,8 @@ def register_franka_envs():
         max_episode_steps=50,
         kwargs={
             "model_path": CURR_DIR + "/../common/slidecabinet/franka_slidecabinet.xml",
-            "config_path": CURR_DIR + "/../common/slidecabinet/franka_slidecabinet.config",
+            "config_path": CURR_DIR
+            + "/../common/slidecabinet/franka_slidecabinet.config",
             "obj_init": {"slidedoor_joint": 0.44},
             "obj_goal": {"slidedoor_joint": 0},
             "obj_interaction_site": ("slide_site",),
@@ -430,7 +437,8 @@ def register_franka_envs():
         max_episode_steps=50,
         kwargs={
             "model_path": CURR_DIR + "/../common/slidecabinet/franka_slidecabinet.xml",
-            "config_path": CURR_DIR + "/../common/slidecabinet/franka_slidecabinet.config",
+            "config_path": CURR_DIR
+            + "/../common/slidecabinet/franka_slidecabinet.config",
             "obj_init": {"slidedoor_joint": (0, 0.44)},
             "obj_goal": {"slidedoor_joint": (0, 0.44)},
             "obj_interaction_site": ("slide_site",),
