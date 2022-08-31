@@ -47,7 +47,8 @@ class RoboHiveEnv(GymEnv):
         except TypeError as err:
             if "unexpected keyword argument 'frameskip" not in str(err):
                 raise TypeError(err)
-            env = self.lib.make(env_name)
+            kwargs.pop("framek_skip")
+            env = self.lib.make(env_name, device_id=render_device, **kwargs)
             self.wrapper_frame_skip = self.frame_skip
 
         self.from_pixels = from_pixels
