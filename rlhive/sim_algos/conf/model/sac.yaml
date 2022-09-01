@@ -1,0 +1,3 @@
+algo_name: SAC
+model_entry_point: sac_model
+loss_entry_point: sac_loss

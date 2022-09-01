@@ -162,4 +162,3 @@ def make_r3m_env(env_name, model_name="resnet50", download=True, **kwargs):
         ),
     )
     return env
-
