@@ -42,14 +42,20 @@ class RoboHiveEnv(GymEnv):
             )
         try:
             env = self.lib.make(
-                env_name, frameskip=self.frame_skip, device_id=render_device, **kwargs
+                env_name,
+                frameskip=self.frame_skip,
+                device_id=render_device,
+                return_dict=True,
+                **kwargs,
             )
             self.wrapper_frame_skip = 1
         except TypeError as err:
             if "unexpected keyword argument 'frameskip" not in str(err):
                 raise TypeError(err)
             kwargs.pop("framek_skip")
-            env = self.lib.make(env_name, device_id=render_device, **kwargs)
+            env = self.lib.make(
+                env_name, return_dict=True, device_id=render_device, **kwargs
+            )
             self.wrapper_frame_skip = self.frame_skip
 
         self.from_pixels = from_pixels
@@ -108,7 +114,7 @@ class RoboHiveEnv(GymEnv):
         """Sets the from_pixels attribute to an existing environment.
 
         Args:
-            - from_pixels (bool): new value for the from_pixels attribute
+            from_pixels (bool): new value for the from_pixels attribute
 
         """
         if from_pixels is self.from_pixels:

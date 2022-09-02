@@ -13,7 +13,6 @@ from torchrl.modules import (
     ProbabilisticActor,
     ValueOperator,
 )
-from torchrl.trainers.helpers import make_target_updater
 from torchrl.trainers.helpers.models import ACTIVATIONS
 
 

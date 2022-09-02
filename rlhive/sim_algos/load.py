@@ -3,7 +3,6 @@ import torchvision.io
 from omegaconf import OmegaConf
 from torchrl.data import TensorDict
 from torchrl.envs import default_info_dict_reader
-from torchrl.envs.utils import set_exploration_mode
 
 from rlhive.sim_algos.run import make_env_constructor, make_model
 
@@ -57,7 +56,7 @@ def rollout_to_video(
 
     """
     pixels = rollout.get(key)
-    if not pixels.dtype is torch.uint8:
+    if pixels.dtype is not torch.uint8:
         raise TypeError(
             f"Expected the pixels tensor to be of type torch.uint8 but got {pixels.dtype}"
         )
@@ -84,14 +83,19 @@ def rollout_to_video(
     )  # video_codec="h264")
 
 
-if __name__ == "__main__":
-    model_path = "/Users/vmoens/Repos/RL/RLHive/rlhive/sim_algos/saved_models/SAC__1b51a3c7_22_09_02-08_08_03/"
-    env, policy = load_model(model_path, from_pixels=True)
+# if __name__ == "__main__":
+#     model_path = "/Users/vmoens/Repos/RL/RLHive/rlhive/sim_algos/saved_models/SAC__1b51a3c7_22_09_02-08_08_03/"
+#     env, policy = load_model(model_path, from_pixels=True)
+#
+#     with set_exploration_mode("mode"):
+#         for k in range(10):
+#             rollout = env.rollout(100, policy=policy)
+#             print("reward", rollout["reward"].mean())
+#             print("solved", rollout["solved"].sum())
+#             rollout["pixels"] = rollout["pixels"].to(torch.uint8)
+#             rollout_to_video(rollout, f"/Users/vmoens/Desktop/video_{k}.mpg")
 
-    with set_exploration_mode("mode"):
-        for k in range(10):
-            rollout = env.rollout(100, policy=policy)
-            print("reward", rollout["reward"].mean())
-            print("solved", rollout["solved"].sum())
-            rollout["pixels"] = rollout["pixels"].to(torch.uint8)
-            rollout_to_video(rollout, f"/Users/vmoens/Desktop/video_{k}.mpg")
+if __name__ == "__main__":
+    rollout = torch.load("/Users/vmoens/dump/rollout.pt")
+    rollout["pixels"] = rollout["pixels"].to(torch.uint8)
+    rollout_to_video(rollout, "/Users/vmoens/robopen_video.mpg")
