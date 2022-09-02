@@ -2,7 +2,7 @@
 #
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
-
+import os
 from dataclasses import dataclass
 from typing import Optional, Union, List
 from warnings import warn
@@ -13,8 +13,7 @@ from torch.optim.lr_scheduler import CosineAnnealingLR
 from torchrl.collectors.collectors import _DataCollector
 from torchrl.data import ReplayBuffer
 from torchrl.envs.common import EnvBase
-from torchrl.modules import TensorDictModule, TensorDictModuleWrapper, \
-    reset_noise
+from torchrl.modules import TensorDictModule, TensorDictModuleWrapper, reset_noise
 from torchrl.objectives.costs.common import LossModule
 from torchrl.objectives.costs.utils import _TargetNetUpdate
 from torchrl.trainers.loggers import Logger
@@ -30,6 +29,13 @@ from torchrl.trainers.trainers import (
     CountFramesLog,
     ClearCudaCache,
 )
+
+try:
+    from omegaconf import OmegaConf
+
+    _has_omegaconf = True
+except ImportError:
+    _has_omegaconf = False
 
 OPTIMIZERS = {
     "adam": optim.Adam,
@@ -141,13 +147,20 @@ def make_trainer(
         f"policy_exploration = {policy_exploration}; \n"
         f"replay_buffer = {replay_buffer}; \n"
         f"logger = {logger}; \n"
-        f"cfg = {cfg}; \n"
     )
 
     if logger is not None:
         # log hyperparams
         logger.log_hparams(cfg)
 
+    save_dir = (
+        os.path.dirname(os.path.abspath(__file__)) + "/../saved_models/" + cfg.exp_name
+    )
+    print("models will be saved in: ", save_dir)
+    os.makedirs(save_dir, exist_ok=True)
+
+    if _has_omegaconf:
+        torch.save(OmegaConf.to_yaml(cfg), save_dir + "/cfg.pt")
     trainer = Trainer(
         collector=collector,
         frame_skip=cfg.frame_skip,
@@ -158,6 +171,8 @@ def make_trainer(
         optim_steps_per_batch=cfg.optim_steps_per_batch,
         clip_grad_norm=cfg.clip_grad_norm,
         clip_norm=cfg.clip_norm,
+        save_trainer_file=save_dir + "/trainer.pt",
+        save_trainer_interval=5000,
     )
 
     if torch.cuda.device_count() > 0:
@@ -246,14 +261,15 @@ def make_trainer(
         "post_steps", UpdateWeights(collector, update_weights_interval=1)
     )
 
-    trainer.register_op("pre_steps_log", LogReward())
+    trainer.register_op("pre_steps_log", LogReward(log_pbar=True))
     trainer.register_op("pre_steps_log", CountFramesLog(frame_skip=cfg.frame_skip))
 
     return trainer
 
+
 @dataclass
 class TrainerConfig:
-    optim_steps_per_batch: int = 500
+    optim_steps_per_batch: int = 150
     # Number of optimization steps in between two collection of data. See frames_per_batch below.
     optimizer: str = "adam"
     # Optimizer to be used.
@@ -265,7 +281,7 @@ class TrainerConfig:
     # passed to it can improve the algorithm performance.
     batch_size: int = 256
     # batch size of the TensorDict retrieved from the replay buffer. Default=256.
-    log_interval: int = 10000
+    log_interval: int = 15000
     # logging interval, in terms of optimization steps. Default=10000.
     lr: float = 3e-4
     # Learning rate used for the optimizer. Default=3e-4.

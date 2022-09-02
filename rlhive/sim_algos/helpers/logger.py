@@ -27,6 +27,7 @@ def make_recorder(cfg, single_env_constructor, logger):
 
     return recorder
 
+
 @dataclass
 class LoggerConfig:
     logger: str = "csv"
@@ -38,7 +39,7 @@ class LoggerConfig:
     exp_name: str = ""
     # experiment name. Used for logging directory.
     # A date and uuid will be joined to account for multiple experiments with the same name.
-    record_interval: int = 1000
+    record_interval: int = 30
     # number of batch collections in between two collections of validation rollouts. Default=1000.
     record_frames: int = 1000
     # number of steps in validation rollouts. " "Default=1000.

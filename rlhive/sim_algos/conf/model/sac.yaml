@@ -1,3 +1,21 @@
 algo_name: SAC
-model_entry_point: sac_model
-loss_entry_point: sac_loss
+entry_point: sac
+device: cpu
+tanh_loc: bool = False
+# if True, uses a Tanh-Normal transform for the policy location of the form
+# upscale * tanh(loc/upscale) (only available with TanhTransform and TruncatedGaussian distributions)
+default_policy_scale: 1.0
+actor_cells: 64
+activation: tanh
+qvalue_cells: 64
+value_cells: 64
+scale_lb: 1e-2
+loss:
+  distributional: False
+  loss_function: l2
+  target_entropy:
+  loss: double
+  num_q_values: 2
+  gamma: 0.99
+  hard_update: False
+  value_network_update_interval: 200

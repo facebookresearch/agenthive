@@ -5,15 +5,21 @@
 import torch
 from torch import nn
 from torchrl.envs.utils import set_exploration_mode
-from torchrl.modules import MLP, TanhNormal, NormalParamWrapper, \
-    TensorDictModule, ProbabilisticActor, ValueOperator
+from torchrl.modules import (
+    MLP,
+    TanhNormal,
+    NormalParamWrapper,
+    TensorDictModule,
+    ProbabilisticActor,
+    ValueOperator,
+)
 from torchrl.trainers.helpers import make_target_updater
 from torchrl.trainers.helpers.models import ACTIVATIONS
 
 
 def make_sac_model(cfg, device, single_env_constructor):
-    tanh_loc = cfg.tanh_loc
-    default_policy_scale = cfg.default_policy_scale
+    tanh_loc = cfg.model.tanh_loc
+    default_policy_scale = cfg.model.default_policy_scale
 
     proof_environment = single_env_constructor()
     proof_environment.reset()
@@ -26,17 +32,17 @@ def make_sac_model(cfg, device, single_env_constructor):
     in_keys = ["observation_vector"]
 
     actor_net_kwargs_default = {
-        "num_cells": [cfg.actor_cells, cfg.actor_cells],
+        "num_cells": [cfg.model.actor_cells, cfg.model.actor_cells],
         "out_features": 2 * action_spec.shape[-1],
-        "activation_class": ACTIVATIONS[cfg.activation],
+        "activation_class": ACTIVATIONS[cfg.model.activation],
     }
     actor_net_kwargs_default.update(actor_net_kwargs)
     actor_net = MLP(**actor_net_kwargs_default)
 
     qvalue_net_kwargs_default = {
-        "num_cells": [cfg.qvalue_cells, cfg.qvalue_cells],
+        "num_cells": [cfg.model.qvalue_cells, cfg.model.qvalue_cells],
         "out_features": 1,
-        "activation_class": ACTIVATIONS[cfg.activation],
+        "activation_class": ACTIVATIONS[cfg.model.activation],
     }
     qvalue_net_kwargs_default.update(qvalue_net_kwargs)
     qvalue_net = MLP(
@@ -44,9 +50,9 @@ def make_sac_model(cfg, device, single_env_constructor):
     )
 
     value_net_kwargs_default = {
-        "num_cells": [cfg.value_cells, cfg.value_cells],
+        "num_cells": [cfg.model.value_cells, cfg.model.value_cells],
         "out_features": 1,
-        "activation_class": ACTIVATIONS[cfg.activation],
+        "activation_class": ACTIVATIONS[cfg.model.activation],
     }
     value_net_kwargs_default.update(value_net_kwargs)
     value_net = MLP(
@@ -63,7 +69,7 @@ def make_sac_model(cfg, device, single_env_constructor):
     actor_net = NormalParamWrapper(
         actor_net,
         scale_mapping=f"biased_softplus_{default_policy_scale}",
-        scale_lb=cfg.scale_lb,
+        scale_lb=cfg.model.scale_lb,
     )
     in_keys_actor = in_keys
     actor_module = TensorDictModule(
@@ -74,7 +80,6 @@ def make_sac_model(cfg, device, single_env_constructor):
             "scale",
         ],
     )
-
 
     actor = ProbabilisticActor(
         spec=action_spec,

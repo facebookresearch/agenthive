@@ -12,6 +12,7 @@ from torchrl.data import (
 from torchrl.envs.libs.gym import GymEnv
 from torchrl.envs.libs.gym import _has_gym, _gym_to_torchrl_spec_transform
 from torchrl.envs.transforms import R3MTransform, CatTensors, TransformedEnv, Compose
+from torchrl.trainers.helpers.envs import LIBS
 
 
 class RoboHiveEnv(GymEnv):
@@ -72,7 +73,7 @@ class RoboHiveEnv(GymEnv):
             self.cameras = self._constructor_kwargs.get(
                 "cameras",
                 ["left_cam", "right_cam", "top_cam"]
-                if "franka" in env_name
+                if "franka" in env_name.lower()
                 else ["left_cam", "right_cam"],
             )
 
@@ -102,6 +103,18 @@ class RoboHiveEnv(GymEnv):
         self.reward_spec = UnboundedContinuousTensorSpec(
             device=self.device,
         )  # default
+
+    def set_from_pixels(self, from_pixels: bool) -> None:
+        """Sets the from_pixels attribute to an existing environment.
+
+        Args:
+            - from_pixels (bool): new value for the from_pixels attribute
+
+        """
+        if from_pixels is self.from_pixels:
+            return
+        self.from_pixels = from_pixels
+        self._make_specs(self.env)
 
     def _step(self, td):
         td = super()._step(td)
@@ -162,3 +175,6 @@ def make_r3m_env(env_name, model_name="resnet50", download=True, **kwargs):
         ),
     )
     return env
+
+
+LIBS["robohive"] = RoboHiveEnv
