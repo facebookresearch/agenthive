@@ -63,8 +63,6 @@ config_fields = [
     for config_field in dataclasses.fields(config_cls)
 ]
 
-print(config_fields)
-
 Config = dataclasses.make_dataclass(cls_name="Config", fields=config_fields)
 cs = ConfigStore.instance()
 cs.store(name="config", node=Config)

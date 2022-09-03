@@ -23,6 +23,7 @@ from torchrl.envs import (
     TransformedEnv,
     EnvBase,
     ParallelEnv,
+    R3MTransform,
 )
 from torchrl.envs.env_creator import env_creator
 from torchrl.record import VideoRecorder
@@ -87,6 +88,10 @@ def make_env_transforms(
             obs_stats = stats
         obs_stats["standard_normal"] = True
         env.append_transform(ObservationNorm(**obs_stats, keys_in=["next_pixels"]))
+
+    if cfg.r3m:
+        r3m_keys = [key for key in env.observation_spec.keys() if "rgb" in key]
+        env.append_transform(R3MTransform(cfg.r3m, keys_in=r3m_keys))
     if norm_rewards:
         reward_scaling = 1.0
         reward_loc = 0.0
@@ -321,3 +326,6 @@ class EnvConfig:
     # Number of steps before a reset of the environment is called (if it has not been flagged as done before).
     batch_transform: bool = False
     # if True, the transforms will be applied to the parallel env, and not to each individual env.
+    r3m: str = ""
+    # if a string is provided, R3MTransform will be used to embed the images collected.
+    # The value of the string should be one of "resnet18", "resnet34" or "resnet50".
