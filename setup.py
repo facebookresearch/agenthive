@@ -130,9 +130,9 @@ def _main():
         # },
         install_requires=[
             pytorch_package_dep,
-            "torchrl",
+            "torchrl @ git+ssh://git@github.com/pytorch/rl@main#egg=torchrl",
             "gym==0.13",
-            "mj_envs",
+            "mj_envs @ git+ssh://git@github.com/vikashplus/mj_envs@v0.4dev#egg=mj_envs",
             "numpy",
             "packaging",
             "cloudpickle",
@@ -149,5 +149,5 @@ if __name__ == "__main__":
     write_version_file()
     print("Building wheel {}-{}".format(package_name, version))
     print(f"BUILD_VERSION is {os.getenv('BUILD_VERSION')}")
-    _check_mj_envs()
+    # _check_mj_envs()
     _main()
