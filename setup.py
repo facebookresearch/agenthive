@@ -128,7 +128,7 @@ def _main():
         long_description_content_type="text/markdown",
         license="BSD",
         # Package info
-        packages=find_packages(exclude=("test", "tutorials")),
+        packages=find_packages(exclude=("test", "tutorials", "third_party")),
         # ext_modules=get_extensions(),
         # cmdclass={
         #     "build_ext": BuildExtension.with_options(no_python_abi_suffix=True),
