@@ -9,10 +9,10 @@ from typing import Optional
 import torch
 from torchrl.data import (
     DEVICE_TYPING,
-    ReplayBuffer,
-    TensorDictReplayBuffer,
     LazyMemmapStorage,
+    ReplayBuffer,
     TensorDictPrioritizedReplayBuffer,
+    TensorDictReplayBuffer,
 )
 
 

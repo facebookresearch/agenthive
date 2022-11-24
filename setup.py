@@ -10,7 +10,7 @@ import shutil
 import subprocess
 from pathlib import Path
 
-from setuptools import setup, find_packages
+from setuptools import find_packages, setup
 
 cwd = os.path.dirname(os.path.abspath(__file__))
 version_txt = os.path.join(cwd, "version.txt")
@@ -112,11 +112,20 @@ def _main():
     long_description = (this_directory / "README.md").read_text()
 
     # install mj_envs locally
-    subprocess.run([
-        "git",
-        "clone", "-c", "submodule.mj_envs/sims/neuromuscular_sim.update=none", "--branch", "v0.4dev", "--recursive", "https://github.com/vikashplus/mj_envs.git", "third_party/mj_envs"
-                    ])
-
+    subprocess.run(
+        [
+            "git",
+            "clone",
+            "-c",
+            "submodule.mj_envs/sims/neuromuscular_sim.update=none",
+            "--branch",
+            "v0.4dev",
+            "--recursive",
+            "https://github.com/vikashplus/mj_envs.git",
+            "third_party/mj_envs",
+        ]
+    )
+    mj_env_path = os.path.join(os.getcwd(), "third_party", "mj_envs#egg=mj_envs")
     setup(
         # Metadata
         name="rlhive",
@@ -138,13 +147,17 @@ def _main():
             pytorch_package_dep,
             "torchrl @ git+ssh://git@github.com/pytorch/rl@main#egg=torchrl",
             "gym==0.13",
-            # "mj_envs @ git+ssh://git@github.com/vikashplus/mj_envs@v0.4dev#egg=mj_envs",
+            # "mj_envs",
+            f"mj_envs @ file://{mj_env_path}",
             "numpy",
             "packaging",
             "cloudpickle",
             "hydra-core",
         ],
         zip_safe=False,
+        dependency_links=[
+            # location to your egg file
+        ],
         extra_requires={
             "tests": ["pytest", "pyyaml", "pytest-instafail"],
         },

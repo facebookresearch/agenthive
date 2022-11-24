@@ -3,8 +3,13 @@ import argparse
 import pytest
 import torch
 from rlhive.rl_envs import RoboHiveEnv
-from torchrl.envs import EnvCreator, CatTensors
-from torchrl.envs import R3MTransform, TransformedEnv, ParallelEnv
+from torchrl.envs import (
+    CatTensors,
+    EnvCreator,
+    ParallelEnv,
+    R3MTransform,
+    TransformedEnv,
+)
 
 
 def test_state_env():

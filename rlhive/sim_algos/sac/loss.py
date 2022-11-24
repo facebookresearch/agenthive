@@ -3,10 +3,10 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
-from typing import Tuple, Optional
+from typing import Optional, Tuple
 
-from torchrl.objectives import SACLoss, LossModule
-from torchrl.objectives.costs.utils import _TargetNetUpdate, SoftUpdate, HardUpdate
+from torchrl.objectives import LossModule, SACLoss
+from torchrl.objectives.costs.utils import _TargetNetUpdate, HardUpdate, SoftUpdate
 
 
 def make_sac_loss(cfg, model) -> Tuple[SACLoss, Optional[_TargetNetUpdate]]:

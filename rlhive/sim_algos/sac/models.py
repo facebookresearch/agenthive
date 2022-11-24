@@ -7,10 +7,10 @@ from torch import nn
 from torchrl.envs.utils import set_exploration_mode
 from torchrl.modules import (
     MLP,
-    TanhNormal,
     NormalParamWrapper,
-    TensorDictModule,
     ProbabilisticActor,
+    TanhNormal,
+    TensorDictModule,
     ValueOperator,
 )
 from torchrl.trainers.helpers.models import ACTIVATIONS

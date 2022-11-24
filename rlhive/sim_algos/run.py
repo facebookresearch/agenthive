@@ -13,9 +13,9 @@ import torch
 from hydra.core.config_store import ConfigStore
 from omegaconf import OmegaConf
 from torchrl.modules import (
+    AdditiveGaussianWrapper,
     EGreedyWrapper,
     OrnsteinUhlenbeckProcessWrapper,
-    AdditiveGaussianWrapper,
 )
 from torchrl.trainers.helpers.envs import (
     correct_for_frame_skip,
@@ -23,17 +23,17 @@ from torchrl.trainers.helpers.envs import (
 )
 
 from rlhive.sim_algos.helpers import (
-    TrainerConfig,
-    OffPolicyCollectorConfig,
     EnvConfig,
-    LossConfig,
     LoggerConfig,
+    LossConfig,
+    OffPolicyCollectorConfig,
     ReplayArgsConfig,
+    TrainerConfig,
 )
 from rlhive.sim_algos.helpers.collectors import make_collector
 from rlhive.sim_algos.helpers.envs import (
-    transformed_env_constructor,
     parallel_env_constructor,
+    transformed_env_constructor,
 )
 from rlhive.sim_algos.helpers.logger import make_recorder
 from rlhive.sim_algos.helpers.replay_buffer import make_replay_buffer

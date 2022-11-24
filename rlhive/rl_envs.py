@@ -6,12 +6,11 @@
 import torch
 from torchrl.data import (
     CompositeSpec,
-    UnboundedContinuousTensorSpec,
     NdBoundedTensorSpec,
+    UnboundedContinuousTensorSpec,
 )
-from torchrl.envs.libs.gym import GymEnv
-from torchrl.envs.libs.gym import _has_gym, _gym_to_torchrl_spec_transform
-from torchrl.envs.transforms import R3MTransform, CatTensors, TransformedEnv, Compose
+from torchrl.envs.libs.gym import _gym_to_torchrl_spec_transform, _has_gym, GymEnv
+from torchrl.envs.transforms import CatTensors, Compose, R3MTransform, TransformedEnv
 from torchrl.trainers.helpers.envs import LIBS
 
 

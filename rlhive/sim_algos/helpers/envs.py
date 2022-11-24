@@ -3,27 +3,26 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
-from dataclasses import dataclass
-from dataclasses import field as dataclass_field
-from typing import Any, Optional, Sequence, Callable
+from dataclasses import dataclass, field as dataclass_field
+from typing import Any, Callable, Optional, Sequence
 
 from torchrl.envs import (
-    DoubleToFloat,
     CatFrames,
-    VecNorm,
-    ObservationNorm,
     CatTensors,
-    RewardScaling,
+    CenterCrop,
+    DoubleToFloat,
+    EnvBase,
     FlattenObservation,
     GrayScale,
-    Resize,
-    CenterCrop,
-    ToTensorImage,
     NoopResetEnv,
-    TransformedEnv,
-    EnvBase,
+    ObservationNorm,
     ParallelEnv,
     R3MTransform,
+    Resize,
+    RewardScaling,
+    ToTensorImage,
+    TransformedEnv,
+    VecNorm,
 )
 from torchrl.envs.env_creator import env_creator
 from torchrl.record import VideoRecorder
