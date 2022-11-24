@@ -111,6 +111,12 @@ def _main():
     this_directory = Path(__file__).parent
     long_description = (this_directory / "README.md").read_text()
 
+    # install mj_envs locally
+    subprocess.run([
+        "git",
+        "clone", "-c", "submodule.mj_envs/sims/neuromuscular_sim.update=none", "--branch", "v0.4dev", "--recursive", "https://github.com/vikashplus/mj_envs.git", "third_party/mj_envs"
+                    ])
+
     setup(
         # Metadata
         name="rlhive",
@@ -132,7 +138,7 @@ def _main():
             pytorch_package_dep,
             "torchrl @ git+ssh://git@github.com/pytorch/rl@main#egg=torchrl",
             "gym==0.13",
-            "mj_envs @ git+ssh://git@github.com/vikashplus/mj_envs@v0.4dev#egg=mj_envs",
+            # "mj_envs @ git+ssh://git@github.com/vikashplus/mj_envs@v0.4dev#egg=mj_envs",
             "numpy",
             "packaging",
             "cloudpickle",
