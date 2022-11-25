@@ -119,9 +119,9 @@ def _main():
             "-c",
             "submodule.mj_envs/sims/neuromuscular_sim.update=none",
             "--branch",
-            "v0.4dev",
+            "non-local-install",
             "--recursive",
-            "https://github.com/vikashplus/mj_envs.git",
+            "https://github.com/vmoens/mj_envs.git",
             "third_party/mj_envs",
         ]
     )
