@@ -45,5 +45,7 @@ printf "* Installing rlhive\n"
 pip3 install -e .
 
 # smoke test
+printf "* Smoke test: torchrl\n"
 python -c "import torchrl"
+printf "* Smoke test: mj_envs\n"
 python -c "import mj_envs"

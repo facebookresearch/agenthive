@@ -44,7 +44,7 @@ commands:
             --progress-bar=off
             << parameters.args >>
 
-  install_torchrl:
+  install_rlhive:
     parameters:
       editable:
         type: boolean
@@ -55,7 +55,7 @@ commands:
           descr: Install PyTorch from nightly releases
       - pip_install:
           args: --no-build-isolation <<# parameters.editable >> --editable <</ parameters.editable >> .
-          descr: Install torchrl <<# parameters.editable >> in editable mode <</ parameters.editable >>
+          descr: Install rlhive <<# parameters.editable >> in editable mode <</ parameters.editable >>
 
 
 binary_common: &binary_common
@@ -95,11 +95,6 @@ binary_common: &binary_common
     UNICODE_ABI: << parameters.unicode_abi >>
     CU_VERSION: << parameters.cu_version >>
 
-smoke_test_common: &smoke_test_common
-  <<: *binary_common
-  docker:
-    - image: torchrl/smoke_test:latest
-
 jobs:
 
   lint_python_and_config:
@@ -121,27 +116,6 @@ jobs:
           when: on_fail
           command: git --no-pager diff
 
-  lint_c:
-    docker:
-      - image: circleci/python:3.7
-    steps:
-      - apt_install:
-          args: libtinfo5
-          descr: Install additional system libraries
-      - checkout
-      - run:
-          name: Install lint utilities
-          command: |
-            curl https://oss-clang-format.s3.us-east-2.amazonaws.com/linux64/clang-format-linux64 -o clang-format
-            chmod +x clang-format
-            sudo mv clang-format /opt/clang-format
-      - run:
-          name: Lint C code
-          command: ./.circleci/unittest/linux/scripts/run-clang-format.py -r torchrl/csrc --clang-format-executable /opt/clang-format
-      - run:
-          name: Required lint modifications
-          when: on_fail
-          command: git --no-pager diff
 
   type_check_python:
     docker:
@@ -151,7 +125,7 @@ jobs:
       - pip_install:
           args: cmake ninja
           descr: Install CMake and Ninja
-      - install_torchrl:
+      - install_rlhive:
           editable: true
       - pip_install:
           args: mypy
@@ -193,7 +167,7 @@ jobs:
             - conda
             - env
       - run:
-          name: Install torchrl
+          name: Install rlhive
           command: .circleci/unittest/linux/scripts/install.sh
       - run:
           name: Run tests
@@ -243,7 +217,7 @@ jobs:
             - conda
             - env
       - run:
-          name: Install torchrl
+          name: Install rlhive
 #          command: bash .circleci/unittest/linux/scripts/install.sh
           command: docker run -t --gpus all -v $PWD:$PWD -w $PWD -e UPLOAD_CHANNEL -e CU_VERSION "${image_name}" .circleci/unittest/linux/scripts/install.sh
       - run:
@@ -267,7 +241,6 @@ workflows:
     jobs:
 #      - circleci_consistency
       - lint_python_and_config
-      - lint_c
 #      - type_check_python
 
   unittest:
