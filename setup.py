@@ -125,7 +125,18 @@ def _main():
             "third_party/mj_envs",
         ]
     )
+    subprocess.run(
+        [
+            "git",
+            "clone",
+            "--branch",
+            "main",
+            "https://github.com/pytorch/rl.git",
+            "third_party/rl",
+        ]
+    )
     mj_env_path = os.path.join(os.getcwd(), "third_party", "mj_envs#egg=mj_envs")
+    rl_path = os.path.join(os.getcwd(), "third_party", "rl#egg=torchrl")
     setup(
         # Metadata
         name="rlhive",
@@ -145,7 +156,8 @@ def _main():
         # },
         install_requires=[
             pytorch_package_dep,
-            "torchrl @ git+ssh://git@github.com/pytorch/rl@main#egg=torchrl",
+            # "torchrl @ git+ssh://git@github.com/pytorch/rl@main#egg=torchrl",
+            f"torchrl @ file://{rl_path}",
             "gym==0.13",
             # "mj_envs",
             f"mj_envs @ file://{mj_env_path}",
