@@ -22,4 +22,4 @@ root_dir="$(git rev-parse --show-toplevel)"
 export MKL_THREADING_LAYER=GNU
 export CKPT_BACKEND=torch
 
-MUJOCO_GL=egl python run ./third_party/mj_envs/mj_envs/tests/test_all.py
+MUJOCO_GL=egl python ./third_party/mj_envs/mj_envs/tests/test_all.py
