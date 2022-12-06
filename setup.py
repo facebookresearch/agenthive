@@ -112,31 +112,31 @@ def _main():
     long_description = (this_directory / "README.md").read_text()
 
     # install mj_envs locally
-    subprocess.run(
-        [
-            "git",
-            "clone",
-            "-c",
-            "submodule.mj_envs/sims/neuromuscular_sim.update=none",
-            "--branch",
-            "non-local-install",
-            "--recursive",
-            "https://github.com/vmoens/mj_envs.git",
-            "third_party/mj_envs",
-        ]
-    )
-    subprocess.run(
-        [
-            "git",
-            "clone",
-            "--branch",
-            "main",
-            "https://github.com/pytorch/rl.git",
-            "third_party/rl",
-        ]
-    )
-    mj_env_path = os.path.join(os.getcwd(), "third_party", "mj_envs#egg=mj_envs")
-    rl_path = os.path.join(os.getcwd(), "third_party", "rl#egg=torchrl")
+    # subprocess.run(
+    #     [
+    #         "git",
+    #         "clone",
+    #         "-c",
+    #         "submodule.mj_envs/sims/neuromuscular_sim.update=none",
+    #         "--branch",
+    #         "non-local-install",
+    #         "--recursive",
+    #         "https://github.com/vmoens/mj_envs.git",
+    #         "third_party/mj_envs",
+    #     ]
+    # )
+    # subprocess.run(
+    #     [
+    #         "git",
+    #         "clone",
+    #         "--branch",
+    #         "main",
+    #         "https://github.com/pytorch/rl.git",
+    #         "third_party/rl",
+    #     ]
+    # )
+    # mj_env_path = os.path.join(os.getcwd(), "third_party", "mj_envs#egg=mj_envs")
+    # rl_path = os.path.join(os.getcwd(), "third_party", "rl#egg=torchrl")
     setup(
         # Metadata
         name="rlhive",
@@ -157,10 +157,11 @@ def _main():
         install_requires=[
             pytorch_package_dep,
             # "torchrl @ git+ssh://git@github.com/pytorch/rl@main#egg=torchrl",
-            f"torchrl @ file://{rl_path}",
+            # f"torchrl @ file://{rl_path}",
+            "torchrl",
             "gym==0.13",
-            # "mj_envs",
-            f"mj_envs @ file://{mj_env_path}",
+            "mj_envs",
+            # f"mj_envs @ file://{mj_env_path}",
             "numpy",
             "packaging",
             "cloudpickle",

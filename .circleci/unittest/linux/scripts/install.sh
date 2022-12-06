@@ -51,6 +51,18 @@ pip install git+https://github.com/pytorch-labs/tensordict
 # smoke test
 python -c "import functorch"
 
+# mj_envs
+git clone -c submodule.mj_envs/sims/neuromuscular_sim.update=none --branch non-local-install --recursive https://github.com/vmoens/mj_envs.git third_party/mj_envs
+cd third_party/mj_envs
+pip install -e .
+cd ../..
+
+# torchrl
+git clone --branch main https://github.com/pytorch/rl.git third_party/torchrl
+cd third_party/torchrl
+pip install -e .
+cd ../..
+
 printf "* Installing rlhive\n"
 pip3 install -e .
 
