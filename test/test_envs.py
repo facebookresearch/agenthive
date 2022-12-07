@@ -53,23 +53,20 @@ def test_pixel_env():
 def test_mixed_env(env_name):
     base_env = RoboHiveEnv(
         env_name,
-        from_pixels=True,
     )
+    assert base_env.from_pixels
     env = TransformedEnv(
         base_env,
         CatTensors(
             [key for key in base_env.observation_spec.keys() if "pixels" not in key],
-            "next_observation",
+            "observation",
         ),
     )
 
     # reset
     tensordict = env.reset()
     assert {"done", "observation", "pixels"} == set(tensordict.keys())
-    if "franka" in env_name:
-        assert tensordict["pixels"].shape[0] == 3
-    else:
-        assert tensordict["pixels"].shape[0] == 2
+    assert tensordict["pixels"].shape[0] == 2
 
     # step
     env.rand_step(tensordict)
@@ -79,9 +76,10 @@ def test_mixed_env(env_name):
         "observation",
         "pixels",
         "action",
-        "next_observation",
-        "next_pixels",
-    } == set(tensordict.keys())
+        ("next", "observation"),
+        ("next", "pixels"),
+        "next",
+    } == set(tensordict.keys(True))
 
     # rollout
     tensordict = env.rollout(10)
@@ -91,40 +89,36 @@ def test_mixed_env(env_name):
         "observation",
         "pixels",
         "action",
-        "next_observation",
-        "next_pixels",
-    } == set(tensordict.keys())
+        ("next", "observation"),
+        ("next", "pixels"),
+        "next",
+    } == set(tensordict.keys(True))
     assert tensordict.shape == torch.Size([10])
     env.close()
 
 
-@pytest.mark.parametrize("parallel", [True, False])
+@pytest.mark.parametrize("parallel", [False, True])
 def test_env_render_native(parallel):
     if not parallel:
         env = RoboHiveEnv(env_name="FrankaReachRandom_v2d-v0")
     else:
         env = ParallelEnv(3, lambda: RoboHiveEnv(env_name="FrankaReachRandom_v2d-v0"))
     td = env.reset()
-    assert set(td.keys()) == {
+    assert set(td.keys(True)) == {
         "done",
-        "rgb:right_cam:240x424:2d",
-        "qp",
-        "qv",
-        "rgb:left_cam:240x424:2d",
+        "observation",
+        "pixels",
     }
     td = env.rand_step(td)
-    assert set(td.keys()) == {
+    assert set(td.keys(True)) == {
         "done",
-        "next_rgb:right_cam:240x424:2d",
-        "rgb:right_cam:240x424:2d",
-        "qp",
-        "next_qv",
-        "qv",
-        "rgb:left_cam:240x424:2d",
-        "next_rgb:left_cam:240x424:2d",
+        "next",
+        ("next", "pixels"),
+        "pixels",
+        "observation",
+        ("next", "observation"),
         "reward",
         "action",
-        "next_qp",
     }
     td = env.rollout(50)
     if not parallel:
@@ -132,18 +126,15 @@ def test_env_render_native(parallel):
     else:
         assert td.shape == torch.Size([3, 50])
 
-    assert set(td.keys()) == {
+    assert set(td.keys(True)) == {
         "done",
-        "next_rgb:right_cam:240x424:2d",
-        "rgb:right_cam:240x424:2d",
-        "qp",
-        "next_qv",
-        "qv",
-        "rgb:left_cam:240x424:2d",
-        "next_rgb:left_cam:240x424:2d",
+        "next",
+        ("next", "pixels"),
+        "pixels",
+        "observation",
+        ("next", "observation"),
         "reward",
         "action",
-        "next_qp",
     }
     env.close()
 
@@ -167,12 +158,12 @@ def test_env_r3m_native(parallel, env_creator):
         base_env,
         R3MTransform(
             "resnet18",
-            ["next_rgb:right_cam:240x424:2d", "next_rgb:left_cam:240x424:2d"],
+            ["pixels"],
             ["pixels_embed"],
         ),
     )
     td = env.reset()
-    td = env.rand_step(td)
+    _ = env.rand_step(td)
     td = env.rollout(50)
     if parallel:
         assert td.shape == torch.Size([3, 50])

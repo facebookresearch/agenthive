@@ -2,7 +2,9 @@
 #
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
+from copy import copy
 
+import numpy as np
 import torch
 from torchrl.data import (
     CompositeSpec,
@@ -12,6 +14,9 @@ from torchrl.data import (
 from torchrl.envs.libs.gym import _gym_to_torchrl_spec_transform, _has_gym, GymEnv
 from torchrl.envs.transforms import CatTensors, Compose, R3MTransform, TransformedEnv
 from torchrl.trainers.helpers.envs import LIBS
+
+if _has_gym:
+    import gym
 
 
 class RoboHiveEnv(GymEnv):
@@ -24,14 +29,13 @@ class RoboHiveEnv(GymEnv):
         pixels_only: bool = False,
         **kwargs,
     ) -> "gym.core.Env":
+
         self.pixels_only = pixels_only
         try:
             render_device = int(str(self.device)[-1])
         except ValueError:
             render_device = 0
         print(f"rendering device: {render_device}, device is {self.device}")
-
-        # traceback.print_stack()
 
         if not _has_gym:
             raise RuntimeError(
@@ -48,6 +52,7 @@ class RoboHiveEnv(GymEnv):
                 **kwargs,
             )
             self.wrapper_frame_skip = 1
+            from_pixels = any("rgb" in key for key in env.obs_keys)
         except TypeError as err:
             if "unexpected keyword argument 'frameskip" not in str(err):
                 raise TypeError(err)
@@ -62,6 +67,14 @@ class RoboHiveEnv(GymEnv):
         return env
 
     def _make_specs(self, env: "gym.Env") -> None:
+        if self.from_pixels:
+            num_cams = len([key for key in env.obs_keys if key.startswith("rgb")])
+            n_pix = 224 * 224 * 3 * num_cams
+            env.observation_space = gym.spaces.Box(
+                -8 * np.ones(env.obs_dim - n_pix),
+                8 * np.ones(env.obs_dim - n_pix),
+                dtype=np.float32,
+            )
         self.action_spec = _gym_to_torchrl_spec_transform(
             env.action_space, device=self.device
         )
@@ -70,37 +83,27 @@ class RoboHiveEnv(GymEnv):
             device=self.device,
         )
         if not isinstance(self.observation_spec, CompositeSpec):
-            self.observation_spec = CompositeSpec(
-                next_observation=self.observation_spec
-            )
-        env_name = self._constructor_kwargs["env_name"]
+            self.observation_spec = CompositeSpec(observation=self.observation_spec)
         if self.from_pixels:
-            self.cameras = self._constructor_kwargs.get(
-                "cameras",
-                ["left_cam", "right_cam", "top_cam"]
-                if "franka" in env_name.lower()
-                else ["left_cam", "right_cam"],
-            )
-
-            self.observation_spec["next_pixels"] = NdBoundedTensorSpec(
+            self.observation_spec["pixels"] = NdBoundedTensorSpec(
                 torch.zeros(
-                    len(self.cameras),
-                    244,  # working with 640
-                    244,  # working with 480
+                    num_cams,
+                    224,  # working with 640
+                    224,  # working with 480
                     3,
                     device=self.device,
                     dtype=torch.uint8,
                 ),
                 255
                 * torch.ones(
-                    len(self.cameras),
-                    244,
-                    244,
+                    num_cams,
+                    224,
+                    224,
                     3,
                     device=self.device,
                     dtype=torch.uint8,
                 ),
-                torch.Size(torch.Size([len(self.cameras), 244, 244, 3])),
+                torch.Size(torch.Size([num_cams, 224, 224, 3])),
                 dtype=torch.uint8,
                 device=self.device,
             )
@@ -121,32 +124,35 @@ class RoboHiveEnv(GymEnv):
         self.from_pixels = from_pixels
         self._make_specs(self.env)
 
+    def read_obs(
+        self,
+        observations,
+    ):
+        observations = copy(self._env.obs_dict)
+        del observations["t"]
+        # recover vec
+        obsvec = np.zeros(0)
+        pixel_list = []
+        for key in observations:
+            if key.startswith("rgb"):
+                pix = observations[key]
+                if not pix.shape[0] == 1:
+                    pix = pix[None]
+                pixel_list.append(pix)
+            elif key in self._env.obs_keys:
+                obsvec = np.concatenate(
+                    [obsvec, observations[key]]
+                )  # ravel helps with images
+
+        out = {"observation": obsvec, "pixels": np.concatenate(pixel_list, 0)}
+        return super().read_obs(out)
+
     def _step(self, td):
         td = super()._step(td)
-        if self.from_pixels:
-            img = self._env.render_camera_offscreen(
-                sim=self._env.sim,
-                cameras=self.cameras,
-                device_id=self.render_device,
-                width=244,
-                height=244,  # working with 640 / 480
-            )
-            img = torch.Tensor(img).squeeze(0)
-            td.set("next_pixels", img)
         return td
 
     def _reset(self, td=None, **kwargs):
         td = super()._reset(td, **kwargs)
-        if self.from_pixels:
-            img = self._env.render_camera_offscreen(
-                sim=self._env.sim,
-                cameras=self.cameras,
-                device_id=self.render_device,
-                width=244,
-                height=244,
-            )
-            img = torch.Tensor(img).squeeze(0)
-            td.set("next_pixels", img)
         return td
 
     def to(self, *args, **kwargs):
@@ -157,26 +163,23 @@ class RoboHiveEnv(GymEnv):
             render_device = 0
         if render_device != self.render_device:
             out._build_env(**self._constructor_kwargs)
-        # self._build_env(**self._constructor_kwargs)
         return out
 
 
 def make_r3m_env(env_name, model_name="resnet50", download=True, **kwargs):
     base_env = RoboHiveEnv(env_name, from_pixels=True, pixels_only=False)
-    vec_keys = [k for k in base_env.observation_spec.keys() if k not in "next_pixels"]
+    vec_keys = [k for k in base_env.observation_spec.keys() if k not in "pixels"]
     env = TransformedEnv(
         base_env,
         Compose(
             R3MTransform(
                 model_name,
-                keys_in=["next_pixels"],
-                keys_out=["next_pixel_r3m"],
+                keys_in=["pixels"],
+                keys_out=["pixel_r3m"],
                 download=download,
                 **kwargs,
             ),
-            CatTensors(
-                keys_in=["next_pixel_r3m", *vec_keys], out_key="next_observation_vector"
-            ),
+            CatTensors(keys_in=["pixel_r3m", *vec_keys], out_key="observation_vector"),
         ),
     )
     return env

@@ -76,7 +76,7 @@ def make_env_constructor(cfg, stats=None):
             stats = get_stats_random_rollout(
                 cfg,
                 proof_env,
-                key="next_pixels" if cfg.from_pixels else "next_observation_vector",
+                key="pixels" if cfg.from_pixels else "observation_vector",
             )
             # make sure proof_env is closed
             proof_env.close()

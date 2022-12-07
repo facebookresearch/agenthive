@@ -61,6 +61,8 @@ def register_kitchen_envs():
     visual_obs_keys_wt = {
         "robot_jnt": 1.0,
         "end_effector": 1.0,
+        "rgb:right_cam:224x224:2d": 1.0,
+        "rgb:left_cam:224x224:2d": 1.0,
     }
     obs_keys_wt = visual_obs_keys_wt
     for site in KitchenFrankaFixed.OBJ_INTERACTION_SITES:
@@ -346,6 +348,12 @@ def register_kitchen_envs():
 @set_directory(CURR_DIR)
 def register_franka_envs():
     # Franka Appliance ======================================================================
+    visual_obs_keys_wt = {
+        "robot_jnt": 1.0,
+        "end_effector": 1.0,
+        "rgb:right_cam:224x224:2d": 1.0,
+        "rgb:left_cam:224x224:2d": 1.0,
+    }
 
     # MICROWAVE
     # obs_keys_wt = {
@@ -364,6 +372,7 @@ def register_franka_envs():
             "obj_interaction_site": ("microhandle_site",),
             "obj_jnt_names": ("micro0joint",),
             "interact_site": "microhandle_site",
+            "obs_keys_wt": visual_obs_keys_wt,
         },
     )
     register(
@@ -378,6 +387,7 @@ def register_franka_envs():
             "obj_interaction_site": ("microhandle_site",),
             "obj_jnt_names": ("micro0joint",),
             "interact_site": "microhandle_site",
+            "obs_keys_wt": visual_obs_keys_wt,
         },
     )
     register(
@@ -393,6 +403,7 @@ def register_franka_envs():
             "obj_jnt_names": ("micro0joint",),
             "obj_body_randomize": ("microwave",),
             "interact_site": "microhandle_site",
+            "obs_keys_wt": visual_obs_keys_wt,
         },
     )
 
@@ -414,6 +425,7 @@ def register_franka_envs():
             "obj_interaction_site": ("slide_site",),
             "obj_jnt_names": ("slidedoor_joint",),
             "interact_site": "slide_site",
+            "obs_keys_wt": visual_obs_keys_wt,
         },
     )
     register(
@@ -429,6 +441,7 @@ def register_franka_envs():
             "obj_interaction_site": ("slide_site",),
             "obj_jnt_names": ("slidedoor_joint",),
             "interact_site": "slide_site",
+            "obs_keys_wt": visual_obs_keys_wt,
         },
     )
     register(
@@ -445,5 +458,6 @@ def register_franka_envs():
             "obj_jnt_names": ("slidedoor_joint",),
             "obj_body_randomize": ("slidecabinet",),
             "interact_site": "slide_site",
+            "obs_keys_wt": visual_obs_keys_wt,
         },
     )

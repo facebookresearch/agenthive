@@ -30,7 +30,11 @@ def test_make_r3menv(device):
     assert {
         "action",
         "done",
-        "next_observation_vector",
+        (
+            "next",
+            "observation_vector",
+        ),
+        "next",
         "observation_vector",
         "reward",
     } == set(td.keys())
@@ -44,7 +48,11 @@ def test_make_r3menv(device):
     assert {
         "action",
         "done",
-        "next_observation_vector",
+        (
+            "next",
+            "observation_vector",
+        ),
+        "next",
         "observation_vector",
         "reward",
     } == set(td.keys())

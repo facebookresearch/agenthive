@@ -20,7 +20,7 @@ def load_model(model_path, device="cpu", **kwargs):
     yaml_config = torch.load(model_path + "cfg.pt")
     cfg = OmegaConf.create(yaml_config)
     for key, value in kwargs.items():
-        cfg.key = value
+        setattr(cfg, key, value)
 
     # create env
     from_pixels = kwargs.pop("from_pixels", cfg.from_pixels)
