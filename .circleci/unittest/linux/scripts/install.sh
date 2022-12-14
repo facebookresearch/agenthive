@@ -54,8 +54,11 @@ python -c "import functorch"
 # mj_envs
 git clone -c submodule.mj_envs/sims/neuromuscular_sim.update=none --branch v0.4dev --recursive https://github.com/vikashplus/mj_envs.git third_party/mj_envs
 cd third_party/mj_envs
-pip install -e .
+pip install .
 cd ../..
+
+# smoke test
+python -c "from mj_envs.envs import *"
 
 # torchrl
 git clone --branch main https://github.com/pytorch/rl.git third_party/torchrl
