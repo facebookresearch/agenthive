@@ -5,17 +5,17 @@ set -e
 eval "$(./conda/bin/conda shell.bash hook)"
 conda activate ./env
 
-yum makecache
-yum install -y glfw
-yum install -y glew
-yum install -y glew-devel
-yum install -y mesa-libGL
-yum install -y mesa-libGL-devel
-yum install -y mesa-libOSMesa
-yum install -y mesa-libOSMesa-devel
-yum install -y glx-utils
-yum -y install egl-utils
-yum -y install freeglut
+#yum makecache
+#yum install -y glfw
+#yum install -y glew
+#yum install -y glew-devel
+#yum install -y mesa-libGL
+#yum install -y mesa-libGL-devel
+#yum install -y mesa-libOSMesa
+#yum install -y mesa-libOSMesa-devel
+#yum install -y glx-utils
+#yum -y install egl-utils
+#yum -y install freeglut
 
 export PYTORCH_TEST_WITH_SLOW='1'
 python -m torch.utils.collect_env
