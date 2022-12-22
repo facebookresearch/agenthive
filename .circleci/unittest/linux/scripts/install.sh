@@ -19,6 +19,7 @@ set -e
 
 eval "$(./conda/bin/conda shell.bash hook)"
 conda activate ./env
+conda env config vars set sim_backend=MUJOCO
 
 if [ "${CU_VERSION:-}" == cpu ] ; then
     version="cpu"

@@ -97,6 +97,7 @@ def test_mixed_env(env_name):
     assert tensordict.shape == torch.Size([10])
     env.close()
 
+
 @pytest.mark.parametrize(
     "env_name",
     [
@@ -141,6 +142,7 @@ def test_specs(env_name):
     )
     check_env_specs(env)
 
+
 @pytest.mark.parametrize(
     "env_name",
     [
@@ -180,14 +182,20 @@ def test_parallel(env_name):
         env = TransformedEnv(
             base_env,
             CatTensors(
-                [key for key in base_env.observation_spec.keys() if "pixels" not in key],
+                [
+                    key
+                    for key in base_env.observation_spec.keys()
+                    if "pixels" not in key
+                ],
                 "observation",
             ),
         )
         return env
+
     env = ParallelEnv(3, make_env)
     env.reset()
     env.rollout(3)
+
 
 @pytest.mark.parametrize("parallel", [False, True])
 def test_env_render_native(parallel):
