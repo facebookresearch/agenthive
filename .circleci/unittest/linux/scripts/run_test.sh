@@ -22,10 +22,10 @@ root_dir="$(git rev-parse --show-toplevel)"
 export MKL_THREADING_LAYER=GNU
 export CKPT_BACKEND=torch
 
-MUJOCO_GL=egl python ./third_party/mj_envs/mj_envs/tests/test_arms.py
-MUJOCO_GL=egl python ./third_party/mj_envs/mj_envs/tests/test_claws.py
-MUJOCO_GL=egl python ./third_party/mj_envs/mj_envs/tests/test_envs.py
-MUJOCO_GL=egl python ./third_party/mj_envs/mj_envs/tests/test_fm.py
-MUJOCO_GL=egl python ./third_party/mj_envs/mj_envs/tests/test_hand_manipulation_suite.py
-MUJOCO_GL=egl python ./third_party/mj_envs/mj_envs/tests/test_multitask.py
-MUJOCO_GL=egl python test/test_envs.py
+MUJOCO_GL=egl sim_backend=MUJOCO python ./third_party/mj_envs/mj_envs/tests/test_arms.py
+MUJOCO_GL=egl sim_backend=MUJOCO python ./third_party/mj_envs/mj_envs/tests/test_claws.py
+MUJOCO_GL=egl sim_backend=MUJOCO python ./third_party/mj_envs/mj_envs/tests/test_envs.py
+MUJOCO_GL=egl sim_backend=MUJOCO python ./third_party/mj_envs/mj_envs/tests/test_fm.py
+MUJOCO_GL=egl sim_backend=MUJOCO python ./third_party/mj_envs/mj_envs/tests/test_hand_manipulation_suite.py
+MUJOCO_GL=egl sim_backend=MUJOCO python ./third_party/mj_envs/mj_envs/tests/test_multitask.py
+MUJOCO_GL=egl sim_backend=MUJOCO python test/test_envs.py
