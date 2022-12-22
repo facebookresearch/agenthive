@@ -4,6 +4,7 @@ channels:
 dependencies:
   - pip
   - pip:
+    - dm_control
     - hypothesis
     - future
     - cloudpickle

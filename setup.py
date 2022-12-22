@@ -166,6 +166,7 @@ def _main():
             "packaging",
             "cloudpickle",
             "hydra-core",
+            "dm_control",
         ],
         zip_safe=False,
         dependency_links=[
