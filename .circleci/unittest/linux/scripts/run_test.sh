@@ -30,10 +30,10 @@ export MUJOCO_GL=$PRIVATE_MUJOCO_GL
 export PYOPENGL_PLATFORM=$PRIVATE_MUJOCO_GL
 export sim_backend=MUJOCO
 
-python ./third_party/mj_envs/mj_envs/tests/test_arms.py
-python ./third_party/mj_envs/mj_envs/tests/test_claws.py
-python ./third_party/mj_envs/mj_envs/tests/test_envs.py
-python ./third_party/mj_envs/mj_envs/tests/test_fm.py
-python ./third_party/mj_envs/mj_envs/tests/test_hand_manipulation_suite.py
-python ./third_party/mj_envs/mj_envs/tests/test_multitask.py
+#python ./third_party/mj_envs/mj_envs/tests/test_arms.py
+#python ./third_party/mj_envs/mj_envs/tests/test_claws.py
+#python ./third_party/mj_envs/mj_envs/tests/test_envs.py
+#python ./third_party/mj_envs/mj_envs/tests/test_fm.py
+#python ./third_party/mj_envs/mj_envs/tests/test_hand_manipulation_suite.py
+#python ./third_party/mj_envs/mj_envs/tests/test_multitask.py
 python test/test_envs.py
