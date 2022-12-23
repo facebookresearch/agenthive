@@ -129,7 +129,10 @@ class RoboHiveEnv(GymEnv):
         observations,
     ):
         observations = copy(self._env.obs_dict)
-        del observations["t"]
+        try:
+            del observations["t"]
+        except KeyError:
+            pass
         # recover vec
         obsvec = np.zeros(0)
         pixel_list = []
