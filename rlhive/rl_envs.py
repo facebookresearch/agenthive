@@ -78,12 +78,13 @@ class RoboHiveEnv(GymEnv):
         self.action_spec = _gym_to_torchrl_spec_transform(
             env.action_space, device=self.device
         )
-        self.observation_spec = _gym_to_torchrl_spec_transform(
+        observation_spec = _gym_to_torchrl_spec_transform(
             env.observation_space,
             device=self.device,
         )
-        if not isinstance(self.observation_spec, CompositeSpec):
-            self.observation_spec = CompositeSpec(observation=self.observation_spec)
+        if not isinstance(observation_spec, CompositeSpec):
+            observation_spec = CompositeSpec(observation=self.observation_spec)
+        self.observation_spec = observation_spec
         if self.from_pixels:
             self.observation_spec["pixels"] = NdBoundedTensorSpec(
                 torch.zeros(
