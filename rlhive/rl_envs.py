@@ -8,7 +8,7 @@ import numpy as np
 import torch
 from torchrl.data import (
     CompositeSpec,
-    NdBoundedTensorSpec,
+    BoundedTensorSpec,
     UnboundedContinuousTensorSpec,
 )
 from torchrl.envs.libs.gym import _gym_to_torchrl_spec_transform, _has_gym, GymEnv
@@ -86,7 +86,7 @@ class RoboHiveEnv(GymEnv):
             observation_spec = CompositeSpec(observation=self.observation_spec)
         self.observation_spec = observation_spec
         if self.from_pixels:
-            self.observation_spec["pixels"] = NdBoundedTensorSpec(
+            self.observation_spec["pixels"] = BoundedTensorSpec(
                 torch.zeros(
                     num_cams,
                     224,  # working with 640
