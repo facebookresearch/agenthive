@@ -83,7 +83,7 @@ class RoboHiveEnv(GymEnv):
             device=self.device,
         )
         if not isinstance(observation_spec, CompositeSpec):
-            observation_spec = CompositeSpec(observation=self.observation_spec).to(self.device)
+            observation_spec = CompositeSpec(observation=observation_spec)
         self.observation_spec = observation_spec
         if self.from_pixels:
             self.observation_spec["pixels"] = BoundedTensorSpec(
