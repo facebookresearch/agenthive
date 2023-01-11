@@ -1,0 +1,4 @@
+# @package _group_
+  grp2a: 22
+  grp2b: bbb
+  gra2c: $group_seed{group.seed}_exp_seed{exp.seed}
