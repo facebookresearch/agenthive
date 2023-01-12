@@ -130,7 +130,7 @@ class RoboHiveEnv(GymEnv):
         )  # default
 
         extra_specs = self.rollout(2)
-        print(extra_specs)
+        print("extra spec", extra_specs)
 
     def set_from_pixels(self, from_pixels: bool) -> None:
         """Sets the from_pixels attribute to an existing environment.
@@ -147,7 +147,6 @@ class RoboHiveEnv(GymEnv):
     def read_obs(self, observation):
         # the info is missing from the reset
         observations = self.env.obs_dict
-        print("info", list(observations.keys()))
         try:
             del observations["t"]
         except KeyError:
