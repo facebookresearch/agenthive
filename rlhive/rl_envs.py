@@ -6,6 +6,7 @@ from copy import copy
 
 import numpy as np
 import torch
+from tensordict.tensordict import make_tensordict
 from torchrl.data import (
     CompositeSpec,
     BoundedTensorSpec,
@@ -164,7 +165,8 @@ class RoboHiveEnv(GymEnv):
         for key, value in info.items():
             if key in ("obs_dict",):
                 continue
-            print(key)
+            if isinstance(value, dict):
+                value = make_tensordict(value, batch_size=[])
             out[key] = value
         tensordict_out.update(out)
         return tensordict_out
