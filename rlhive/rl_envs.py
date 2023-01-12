@@ -64,7 +64,7 @@ class RoboHiveEnv(GymEnv):
 
         self.from_pixels = from_pixels
         self.render_device = render_device
-        self.info_dict_reader = lambda info, *args: print(info.keys())
+        self.info_dict_reader = self.read_info
         return env
 
     def _make_specs(self, env: "gym.Env") -> None:
@@ -126,11 +126,15 @@ class RoboHiveEnv(GymEnv):
         self.from_pixels = from_pixels
         self._make_specs(self.env)
 
-    def read_obs(
+    def read_obs(self, observation):
+        return super().read_obs({})
+
+    def read_info(
         self,
-        observations,
+        info,
+        tensordict_out
     ):
-        observations = copy(self._env.obs_dict)
+        observations = info['obs_dict']
         try:
             del observations["t"]
         except KeyError:
@@ -152,8 +156,8 @@ class RoboHiveEnv(GymEnv):
             out = {"observation": obsvec, "pixels": np.concatenate(pixel_list, 0)}
         else:
             out = {"observation": obsvec}
-
-        return super().read_obs(out)
+        tensordict_out.update(out)
+        return tensordict_out
 
     def _step(self, td):
         td = super()._step(td)
