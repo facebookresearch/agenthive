@@ -28,7 +28,7 @@ def make_extra_spec(tensordict, spec):
         if key in ("next", "action", "done") or (spec is not None and key in spec.keys()):
             continue
         if isinstance(value, TensorDictBase):
-            spec = make_extra_spec(value, spec, None)
+            spec = make_extra_spec(value, None)
         else:
             spec = UnboundedContinuousTensorSpec(shape=value.shape, dtype=value.dtype)
         c[key] = spec
