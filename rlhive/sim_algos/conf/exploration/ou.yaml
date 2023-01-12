@@ -1,8 +1,0 @@
-type: additive_gaussian
-eps_init: 1.0
-eps_end: 0.1
-annealing_num_steps: 1000
-theta: 0.15
-mu: 0.0
-sigma: 0.2
-dt: 0.01
