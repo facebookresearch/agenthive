@@ -20,7 +20,7 @@ if _has_gym:
     import gym
 
 
-def make_extra_spec(tensordict, obsspec):
+def make_extra_spec(tensordict, obsspec: CompositeSpec):
     if tensordict.shape:
         tensordict = tensordict.view(-1)[0]
     c = CompositeSpec()
@@ -32,7 +32,8 @@ def make_extra_spec(tensordict, obsspec):
         else:
             spec = UnboundedContinuousTensorSpec(shape=value.shape, dtype=value.dtype)
         c[key] = spec
-    return c
+    if obsspec is not None:
+        return obsspec.update(c)
 
 class RoboHiveEnv(GymEnv):
     info_keys = ["time", "rwd_dense", "rwd_sparse", "solved"]
@@ -129,7 +130,7 @@ class RoboHiveEnv(GymEnv):
             device=self.device,
         )  # default
 
-        make_extra_spec(self.rollout(2), self.observation_spec)
+        self.observation_spec = make_extra_spec(self.rollout(2), self.observation_spec)
         print("extra spec", self.observation_spec)
 
     def set_from_pixels(self, from_pixels: bool) -> None:
