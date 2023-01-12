@@ -127,15 +127,8 @@ class RoboHiveEnv(GymEnv):
         self._make_specs(self.env)
 
     def read_obs(self, observation):
-        print("read obs", list(self._env.obs_dict.keys()))
-        return super().read_obs({})
-
-    def read_info(
-        self,
-        info,
-        tensordict_out
-    ):
-        observations = info['obs_dict']
+        # the info is missing from the reset
+        observations = self.env.obs_dict
         print("info", list(observations.keys()))
         try:
             del observations["t"]
@@ -160,8 +153,19 @@ class RoboHiveEnv(GymEnv):
             out = {"observation": obsvec, "pixels": np.concatenate(pixel_list, 0)}
         else:
             out = {"observation": obsvec}
+        return super().read_obs(out)
+
+    def read_info(
+        self,
+        info,
+        tensordict_out
+    ):
+        out = {}
+        for key, value in info.items():
+            if key in ("obs_dict",):
+                continue
+            out[key] = value
         tensordict_out.update(out)
-        print(tensordict_out)
         return tensordict_out
 
     def _step(self, td):
