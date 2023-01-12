@@ -20,15 +20,15 @@ if _has_gym:
     import gym
 
 
-def make_extra_spec(tensordict):
+def make_extra_spec(tensordict, spec):
     if tensordict.shape:
         tensordict = tensordict.view(-1)[0]
     c = CompositeSpec()
     for key, value in tensordict.items():
-        if key in ("next", "action", "done"):
+        if key in ("next", "action", "done") or (spec is not None and key in spec.keys()):
             continue
         if isinstance(value, TensorDictBase):
-            spec = make_extra_spec(value)
+            spec = make_extra_spec(value, spec, None)
         else:
             spec = UnboundedContinuousTensorSpec(shape=value.shape, dtype=value.dtype)
         c[key] = spec
@@ -129,8 +129,8 @@ class RoboHiveEnv(GymEnv):
             device=self.device,
         )  # default
 
-        extra_specs = make_extra_spec(self.rollout(2))
-        print("extra spec", extra_specs)
+        make_extra_spec(self.rollout(2), self.observation_spec)
+        print("extra spec", self.observation_spec)
 
     def set_from_pixels(self, from_pixels: bool) -> None:
         """Sets the from_pixels attribute to an existing environment.
