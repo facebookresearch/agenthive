@@ -164,6 +164,7 @@ class RoboHiveEnv(GymEnv):
         for key, value in info.items():
             if key in ("obs_dict",):
                 continue
+            print(key)
             out[key] = value
         tensordict_out.update(out)
         return tensordict_out
