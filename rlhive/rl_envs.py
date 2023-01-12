@@ -6,7 +6,7 @@ from copy import copy
 
 import numpy as np
 import torch
-from tensordict.tensordict import make_tensordict
+from tensordict.tensordict import make_tensordict, TensorDictBase
 from torchrl.data import (
     CompositeSpec,
     BoundedTensorSpec,
@@ -19,6 +19,18 @@ from torchrl.trainers.helpers.envs import LIBS
 if _has_gym:
     import gym
 
+
+def make_extra_spec(tensordict):
+    if tensordict.shape:
+        tensordict = tensordict.view(-1)[0]
+    c = CompositeSpec()
+    for key, value in tensordict.items():
+        if isinstance(value, TensorDictBase):
+            spec = make_tensordict(value)
+        else:
+            spec = UnboundedContinuousTensorSpec(shape=value.shape, dtype=value.dtype)
+        c[key] = spec
+    return c
 
 class RoboHiveEnv(GymEnv):
     info_keys = ["time", "rwd_dense", "rwd_sparse", "solved"]
@@ -114,6 +126,9 @@ class RoboHiveEnv(GymEnv):
         self.reward_spec = UnboundedContinuousTensorSpec(
             device=self.device,
         )  # default
+
+        extra_specs = self.rollout(2)
+        print(extra_specs)
 
     def set_from_pixels(self, from_pixels: bool) -> None:
         """Sets the from_pixels attribute to an existing environment.
