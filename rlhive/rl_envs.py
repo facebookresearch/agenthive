@@ -64,6 +64,7 @@ class RoboHiveEnv(GymEnv):
 
         self.from_pixels = from_pixels
         self.render_device = render_device
+        self.info_dict_reader = lambda info: print(info.keys())
         return env
 
     def _make_specs(self, env: "gym.Env") -> None:
@@ -147,8 +148,11 @@ class RoboHiveEnv(GymEnv):
                 obsvec = np.concatenate(
                     [obsvec, observations[key]]
                 )  # ravel helps with images
+        if self.from_pixels:
+            out = {"observation": obsvec, "pixels": np.concatenate(pixel_list, 0)}
+        else:
+            out = {"observation": obsvec}
 
-        out = {"observation": obsvec, "pixels": np.concatenate(pixel_list, 0)}
         return super().read_obs(out)
 
     def _step(self, td):
