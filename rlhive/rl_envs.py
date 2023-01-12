@@ -25,6 +25,8 @@ def make_extra_spec(tensordict):
         tensordict = tensordict.view(-1)[0]
     c = CompositeSpec()
     for key, value in tensordict.items():
+        if key in ("next", "action", "done"):
+            continue
         if isinstance(value, TensorDictBase):
             spec = make_tensordict(value)
         else:
