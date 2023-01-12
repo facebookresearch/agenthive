@@ -25,7 +25,7 @@ def make_extra_spec(tensordict, obsspec: CompositeSpec):
         tensordict = tensordict.view(-1)[0]
     c = CompositeSpec()
     for key, value in tensordict.items():
-        if key in ("next", "action", "done") or (obsspec is not None and key in obsspec.keys()):
+        if key in ("next", "action", "done", "reward") or (obsspec is not None and key in obsspec.keys()):
             continue
         if isinstance(value, TensorDictBase):
             spec = make_extra_spec(value, None)
