@@ -127,6 +127,7 @@ class RoboHiveEnv(GymEnv):
         self._make_specs(self.env)
 
     def read_obs(self, observation):
+        print(list(self._env.obs_dict.keys()))
         return super().read_obs({})
 
     def read_info(
@@ -135,6 +136,7 @@ class RoboHiveEnv(GymEnv):
         tensordict_out
     ):
         observations = info['obs_dict']
+        print(list(observations.keys()))
         try:
             del observations["t"]
         except KeyError:
