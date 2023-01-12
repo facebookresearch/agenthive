@@ -64,7 +64,7 @@ class RoboHiveEnv(GymEnv):
 
         self.from_pixels = from_pixels
         self.render_device = render_device
-        self.info_dict_reader = lambda info: print(info.keys())
+        self.info_dict_reader = lambda info, *args: print(info.keys())
         return env
 
     def _make_specs(self, env: "gym.Env") -> None:
