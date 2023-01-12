@@ -142,7 +142,7 @@ class RoboHiveEnv(GymEnv):
         except KeyError:
             pass
         # recover vec
-        obsvec = np.zeros(0)
+        obsvec = []
         pixel_list = []
         for key in observations:
             if key.startswith("rgb"):
@@ -151,14 +151,17 @@ class RoboHiveEnv(GymEnv):
                     pix = pix[None]
                 pixel_list.append(pix)
             elif key in self._env.obs_keys:
-                obsvec = np.concatenate(
-                    [obsvec, observations[key]]
+                obsvec.append(
+                    observations[key]
                 )  # ravel helps with images
+        if obsvec:
+            obsvec = np.concatenate(obsvec, 0)
         if self.from_pixels:
             out = {"observation": obsvec, "pixels": np.concatenate(pixel_list, 0)}
         else:
             out = {"observation": obsvec}
         tensordict_out.update(out)
+        print(tensordict_out)
         return tensordict_out
 
     def _step(self, td):
