@@ -20,12 +20,12 @@ if _has_gym:
     import gym
 
 
-def make_extra_spec(tensordict, spec):
+def make_extra_spec(tensordict, obsspec):
     if tensordict.shape:
         tensordict = tensordict.view(-1)[0]
     c = CompositeSpec()
     for key, value in tensordict.items():
-        if key in ("next", "action", "done") or (spec is not None and key in spec.keys()):
+        if key in ("next", "action", "done") or (obsspec is not None and key in obsspec.keys()):
             continue
         if isinstance(value, TensorDictBase):
             spec = make_extra_spec(value, None)
