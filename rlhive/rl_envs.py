@@ -133,7 +133,6 @@ class RoboHiveEnv(GymEnv):
         )  # default
 
         self.observation_spec = make_extra_spec(self.rollout(2), self.observation_spec)
-        print("extra spec", self.observation_spec)
 
     def set_from_pixels(self, from_pixels: bool) -> None:
         """Sets the from_pixels attribute to an existing environment.
