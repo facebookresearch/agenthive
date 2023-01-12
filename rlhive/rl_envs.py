@@ -33,7 +33,9 @@ def make_extra_spec(tensordict, obsspec: CompositeSpec):
             spec = UnboundedContinuousTensorSpec(shape=value.shape, dtype=value.dtype)
         c[key] = spec
     if obsspec is not None:
-        return obsspec.update(c)
+        obsspec.update(c)
+        return obsspec
+    return c
 
 class RoboHiveEnv(GymEnv):
     info_keys = ["time", "rwd_dense", "rwd_sparse", "solved"]
