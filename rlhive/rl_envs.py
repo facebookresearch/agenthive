@@ -129,7 +129,7 @@ class RoboHiveEnv(GymEnv):
             device=self.device,
         )  # default
 
-        extra_specs = self.rollout(2)
+        extra_specs = make_extra_spec(self.rollout(2))
         print("extra spec", extra_specs)
 
     def set_from_pixels(self, from_pixels: bool) -> None:
