@@ -7,11 +7,7 @@ from copy import copy
 import numpy as np
 import torch
 from tensordict.tensordict import make_tensordict, TensorDictBase
-from torchrl.data import (
-    CompositeSpec,
-    BoundedTensorSpec,
-    UnboundedContinuousTensorSpec,
-)
+from torchrl.data import BoundedTensorSpec, CompositeSpec, UnboundedContinuousTensorSpec
 from torchrl.envs.libs.gym import _gym_to_torchrl_spec_transform, _has_gym, GymEnv
 from torchrl.envs.transforms import CatTensors, Compose, R3MTransform, TransformedEnv
 from torchrl.trainers.helpers.envs import LIBS
@@ -25,7 +21,9 @@ def make_extra_spec(tensordict, obsspec: CompositeSpec):
         tensordict = tensordict.view(-1)[0]
     c = CompositeSpec()
     for key, value in tensordict.items():
-        if obsspec is not None and (key in ("next", "action", "done", "reward") or key in obsspec.keys()):
+        if obsspec is not None and (
+            key in ("next", "action", "done", "reward") or key in obsspec.keys()
+        ):
             continue
         if isinstance(value, TensorDictBase):
             spec = make_extra_spec(value, None)
@@ -36,6 +34,7 @@ def make_extra_spec(tensordict, obsspec: CompositeSpec):
         obsspec.update(c)
         return obsspec
     return c
+
 
 class RoboHiveEnv(GymEnv):
     # info_keys = ["time", "rwd_dense", "rwd_sparse", "solved"]
@@ -163,9 +162,7 @@ class RoboHiveEnv(GymEnv):
                     pix = pix[None]
                 pixel_list.append(pix)
             elif key in self._env.obs_keys:
-                obsvec.append(
-                    observations[key]
-                )  # ravel helps with images
+                obsvec.append(observations[key])  # ravel helps with images
         if obsvec:
             obsvec = np.concatenate(obsvec, 0)
         if self.from_pixels:
@@ -174,11 +171,7 @@ class RoboHiveEnv(GymEnv):
             out = {"observation": obsvec}
         return super().read_obs(out)
 
-    def read_info(
-        self,
-        info,
-        tensordict_out
-    ):
+    def read_info(self, info, tensordict_out):
         out = {}
         for key, value in info.items():
             if key in ("obs_dict",):
