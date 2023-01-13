@@ -81,7 +81,8 @@ def make_transformed_env(
     """
     env = TransformedEnv(env, Compose(R3MTransform('resnet50', in_keys=["pixels"], download=True), FlattenObservation(-2, -1, in_keys=["r3m_vec"]))) # Necessary to Compose R3MTransform with FlattenObservation; Track bug: https://github.com/pytorch/rl/issues/802
     env.append_transform(RewardScaling(loc=0.0, scale=5.0))
-    selected_keys = list(env.observation_spec.keys())
+    #selected_keys = list(env.observation_spec.keys())
+    selected_keys = ["r3m_vec", "observation"]
     out_key = "observation_vector"
     env.append_transform(CatTensors(in_keys=selected_keys, out_key=out_key))
 
