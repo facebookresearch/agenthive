@@ -1,3 +1,0 @@
-algo_name: REDQ
-model.entry_point: redq_model
-loss_entry_point: redq_loss

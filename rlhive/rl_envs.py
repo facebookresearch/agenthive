@@ -6,6 +6,7 @@ from copy import copy
 
 import numpy as np
 import torch
+from tensordict.tensordict import make_tensordict, TensorDictBase
 from torchrl.data import (
     CompositeSpec,
     BoundedTensorSpec,
@@ -19,8 +20,25 @@ if _has_gym:
     import gym
 
 
+def make_extra_spec(tensordict, obsspec: CompositeSpec):
+    if tensordict.shape:
+        tensordict = tensordict.view(-1)[0]
+    c = CompositeSpec()
+    for key, value in tensordict.items():
+        if obsspec is not None and (key in ("next", "action", "done", "reward") or key in obsspec.keys()):
+            continue
+        if isinstance(value, TensorDictBase):
+            spec = make_extra_spec(value, None)
+        else:
+            spec = UnboundedContinuousTensorSpec(shape=value.shape, dtype=value.dtype)
+        c[key] = spec
+    if obsspec is not None:
+        obsspec.update(c)
+        return obsspec
+    return c
+
 class RoboHiveEnv(GymEnv):
-    info_keys = ["time", "rwd_dense", "rwd_sparse", "solved"]
+    # info_keys = ["time", "rwd_dense", "rwd_sparse", "solved"]
 
     def _build_env(
         self,
@@ -64,6 +82,7 @@ class RoboHiveEnv(GymEnv):
 
         self.from_pixels = from_pixels
         self.render_device = render_device
+        self.info_dict_reader = self.read_info
         return env
 
     def _make_specs(self, env: "gym.Env") -> None:
@@ -113,6 +132,8 @@ class RoboHiveEnv(GymEnv):
             device=self.device,
         )  # default
 
+        self.observation_spec = make_extra_spec(self.rollout(2), self.observation_spec)
+
     def set_from_pixels(self, from_pixels: bool) -> None:
         """Sets the from_pixels attribute to an existing environment.
 
@@ -125,17 +146,15 @@ class RoboHiveEnv(GymEnv):
         self.from_pixels = from_pixels
         self._make_specs(self.env)
 
-    def read_obs(
-        self,
-        observations,
-    ):
-        observations = copy(self._env.obs_dict)
+    def read_obs(self, observation):
+        # the info is missing from the reset
+        observations = self.env.obs_dict
         try:
             del observations["t"]
         except KeyError:
             pass
         # recover vec
-        obsvec = np.zeros(0)
+        obsvec = []
         pixel_list = []
         for key in observations:
             if key.startswith("rgb"):
@@ -144,12 +163,31 @@ class RoboHiveEnv(GymEnv):
                     pix = pix[None]
                 pixel_list.append(pix)
             elif key in self._env.obs_keys:
-                obsvec = np.concatenate(
-                    [obsvec, observations[key]]
+                obsvec.append(
+                    observations[key]
                 )  # ravel helps with images
-
-        out = {"observation": obsvec, "pixels": np.concatenate(pixel_list, 0)}
+        if obsvec:
+            obsvec = np.concatenate(obsvec, 0)
+        if self.from_pixels:
+            out = {"observation": obsvec, "pixels": np.concatenate(pixel_list, 0)}
+        else:
+            out = {"observation": obsvec}
         return super().read_obs(out)
+
+    def read_info(
+        self,
+        info,
+        tensordict_out
+    ):
+        out = {}
+        for key, value in info.items():
+            if key in ("obs_dict",):
+                continue
+            if isinstance(value, dict):
+                value = make_tensordict(value, batch_size=[])
+            out[key] = value
+        tensordict_out.update(out)
+        return tensordict_out
 
     def _step(self, td):
         td = super()._step(td)
