@@ -9,11 +9,11 @@ device: "cuda:0"
 
 # Environment
 task: visual_franka_slide_random-v3
-frame_skip: 2
-from_pixels: true
+frame_skip: 1
 reward_scaling: 5.0
 init_env_steps: 1000
 seed: 42
+eval_traj: 25
 
 # Collector
 env_per_collector: 1

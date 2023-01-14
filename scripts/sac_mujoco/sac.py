@@ -45,46 +45,36 @@ from torchrl.objectives import SoftUpdate
 from torchrl.trainers import Recorder
 
 from rlhive.rl_envs import RoboHiveEnv
-from torchrl.envs import ParallelEnv, TransformedEnv, R3MTransform
+from torchrl.envs import ParallelEnv, TransformedEnv, R3MTransform, SelectTransform
 
 os.environ['WANDB_MODE'] = 'offline' ## offline sync. TODO: Remove this behavior
 
-def make_env():
-    """
-    Create a base env
-    """
-    env_args = (args.task,)
-    env_library = GymEnv
-
-    env_kwargs = {
-        "device": device,
-        "frame_skip": args.frame_skip,
-        "from_pixels": args.from_pixels,
-        "pixels_only": args.from_pixels,
-    }
-    env = env_library(*env_args, **env_kwargs)
-
-    env_name = args.task
-    base_env = RoboHiveEnv(env_name, device=device)
-    env = TransformedEnv(base_env, R3MTransform('resnet50', in_keys=["pixels"], download=True))
-    assert env.device == device
+def make_env(
+                task,
+                reward_scaling,
+                device
+            ):
+    base_env = RoboHiveEnv(task, device=device)
+    env = make_transformed_env(env=base_env, reward_scaling=reward_scaling)
 
     return env
 
 
 def make_transformed_env(
     env,
+    reward_scaling=5.0,
     stats=None,
 ):
     """
     Apply transforms to the env (such as reward scaling and state normalization)
     """
-    env = TransformedEnv(env, Compose(R3MTransform('resnet50', in_keys=["pixels"], download=True), FlattenObservation(-2, -1, in_keys=["r3m_vec"]))) # Necessary to Compose R3MTransform with FlattenObservation; Track bug: https://github.com/pytorch/rl/issues/802
-    env.append_transform(RewardScaling(loc=0.0, scale=5.0))
-    #selected_keys = list(env.observation_spec.keys())
+    env = TransformedEnv(env, SelectTransform("solved", "pixels", "observation"))
+    env.append_transform(Compose(R3MTransform('resnet50', in_keys=["pixels"], download=True), FlattenObservation(-2, -1, in_keys=["r3m_vec"]))) # Necessary to Compose R3MTransform with FlattenObservation; Track bug: https://github.com/pytorch/rl/issues/802
+    env.append_transform(RewardScaling(loc=0.0, scale=reward_scaling))
     selected_keys = ["r3m_vec", "observation"]
     out_key = "observation_vector"
     env.append_transform(CatTensors(in_keys=selected_keys, out_key=out_key))
+
 
     #  we normalize the states
     if stats is None:
@@ -97,93 +87,24 @@ def make_transformed_env(
     env.append_transform(DoubleToFloat(in_keys=[out_key], in_keys_inv=[]))
     return env
 
-
-def parallel_env_constructor(
-    stats,
-    num_worker=1,
-    **env_kwargs,
-):
-    if num_worker == 1:
-        env_creator = EnvCreator(
-            lambda: make_transformed_env(make_env(), stats, **env_kwargs)
-        )
-        return env_creator
-
-    parallel_env = ParallelEnv(
-        num_workers=num_worker,
-        create_env_fn=EnvCreator(lambda: make_env()),
-        create_env_kwargs=None,
-        pin_memory=False,
-    )
-    env = make_transformed_env(parallel_env, stats, **env_kwargs)
-    return env
-
-
-def get_stats_random_rollout(proof_environment, key: Optional[str] = None):
-    print("computing state stats")
-    n = 0
-    td_stats = []
-    while n < args.init_env_steps:
-        _td_stats = proof_environment.rollout(max_steps=args.init_env_steps)
-        n += _td_stats.numel()
-        _td_stats_select = _td_stats.to_tensordict().select(key).cpu()
-        if not len(list(_td_stats_select.keys())):
-            raise RuntimeError(
-                f"key {key} not found in tensordict with keys {list(_td_stats.keys())}"
-            )
-        td_stats.append(_td_stats_select)
-        del _td_stats, _td_stats_select
-    td_stats = torch.cat(td_stats, 0)
-
-    m = td_stats.get(key).mean(dim=0)
-    s = td_stats.get(key).std(dim=0)
-    m[s == 0] = 0.0
-    s[s == 0] = 1.0
-
-    print(
-        f"stats computed for {td_stats.numel()} steps. Got: \n"
-        f"loc = {m}, \n"
-        f"scale: {s}"
-    )
-    if not torch.isfinite(m).all():
-        raise RuntimeError("non-finite values found in mean")
-    if not torch.isfinite(s).all():
-        raise RuntimeError("non-finite values found in sd")
-    stats = {"loc": m, "scale": s}
-    return stats
-
-
-def get_env_stats():
-    """
-    Gets the stats of an environment
-    """
-    proof_env = make_transformed_env(make_env(), None)
-    proof_env.set_seed(args.seed)
-    stats = get_stats_random_rollout(
-        proof_env,
-        key="observation_vector",
-    )
-    # make sure proof_env is closed
-    proof_env.close()
-    return stats
-
-
 def make_recorder(
                     task: str,
                     frame_skip: int,
                     record_interval: int,
                     actor_model_explore: object,
-                    device: torch.device
+                    eval_traj: int,
+                    env_configs: dict,
                  ):
-    _base_env = RoboHiveEnv(task, device=device) # TODO: Move this to make_env() function
-    test_env = make_transformed_env(_base_env)
+    test_env = make_env(task=task, **env_configs)
     recorder_obj = Recorder(
-        record_frames=1000,
+        record_frames=eval_traj*test_env.horizon,
         frame_skip=frame_skip,
         policy_exploration=actor_model_explore,
         recorder=test_env,
         exploration_mode="mean",
         record_interval=record_interval,
+        log_keys=["reward", "solved"],
+        out_keys={"reward": "r_evaluation", "solved" : "success"}
     )
     return recorder_obj
 
@@ -220,6 +141,20 @@ def make_replay_buffer(
     return replay_buffer
 
 
+def evaluate_success(
+                        env_success_fn,
+                        td_record: dict,
+                        eval_traj: int
+                    ):
+    td_record["success"] = td_record["success"].reshape((eval_traj, -1))
+    paths = []
+    for traj, solved_traj in zip(range(eval_traj), td_record["success"]):
+        path = {"env_infos": {"solved": solved_traj.data.cpu().numpy()}}
+        paths.append(path)
+    success_percentage = env_success_fn(paths)
+    return success_percentage
+
+
 
 @hydra.main(config_name="sac.yaml", config_path="config")
 def main(args: DictConfig):
@@ -234,8 +169,11 @@ def main(args: DictConfig):
     np.random.seed(args.seed)
 
     # Create Environment
-    base_env = RoboHiveEnv(args.task, device=args.device) # TODO: Move this to make_env() function
-    train_env = make_transformed_env(base_env)
+    env_configs = {
+                    "reward_scaling": args.reward_scaling,
+                    "device": args.device,
+                  }
+    train_env = make_env(task=args.task, **env_configs)
 
     # Create Agent
 
@@ -299,13 +237,11 @@ def main(args: DictConfig):
     model = nn.ModuleList([actor, qvalue]).to(device)
 
     # add forward pass for initialization with proof env
-    _base_env = RoboHiveEnv(args.task, device=args.device) # TODO: move this to make_env
-    proof_env = make_transformed_env(_base_env)
+    proof_env = make_env(task=args.task, **env_configs)
     # init nets
     with torch.no_grad(), set_exploration_mode("random"):
         td = proof_env.reset()
         td = td.to(device)
-        #print(td[in_keys[0]].shape)
         for net in model:
             net(td)
     del td
@@ -354,13 +290,15 @@ def main(args: DictConfig):
                                         device=device,
                                       )
 
+
     # Trajectory recorder for evaluation
     recorder = make_recorder(
                                 task=args.task,
                                 frame_skip=args.frame_skip,
                                 record_interval=args.record_interval,
                                 actor_model_explore=actor_model_explore,
-                                device=device
+                                eval_traj=args.eval_traj,
+                                env_configs=env_configs,
                             )
 
     # Optimizers
@@ -464,6 +402,11 @@ def main(args: DictConfig):
                     }
                 )
             td_record = recorder(None)
+            success_percentage = evaluate_success(
+                                                    env_success_fn=train_env.evaluate_success,
+                                                    td_record=td_record,
+                                                    eval_traj=args.eval_traj
+                                                 )
             if td_record is not None:
                 rewards_eval.append(
                     (
@@ -473,6 +416,7 @@ def main(args: DictConfig):
                     )
                 )
                 wandb.log({"test_reward": rewards_eval[-1][1]})
+                wandb.log({"success": success_percentage})
             if len(rewards_eval):
                 pbar.set_description(
                     f"reward: {rewards[-1][1]: 4.4f} (r0 = {r0: 4.4f}), test reward: {rewards_eval[-1][1]: 4.4f}"
