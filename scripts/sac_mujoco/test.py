@@ -9,7 +9,7 @@ from torchrl.envs import (
     EnvCreator,
     ObservationNorm,
 )
-from rrl import RRLTransform
+from rlhive.sim_algos.helpers.rrl_transform import RRLTransform
 
 def make_env(
                 task,

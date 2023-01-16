@@ -46,7 +46,7 @@ from torchrl.trainers import Recorder
 
 from rlhive.rl_envs import RoboHiveEnv
 from torchrl.envs import ParallelEnv, TransformedEnv, R3MTransform, SelectTransform
-from rrl import RRLTransform
+from rlhive.sim_algos.helpers.rrl_transform import RRLTransform
 
 os.environ['WANDB_MODE'] = 'offline' ## offline sync. TODO: Remove this behavior
 
