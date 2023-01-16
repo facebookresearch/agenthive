@@ -25,7 +25,7 @@ from torchrl.trainers.helpers.envs import (
     initialize_observation_norm_transforms,
     parallel_env_constructor,
     retrieve_observation_norms_state_dict,
-    transformed_env_constructor,
+    #transformed_env_constructor,
 )
 from torchrl.trainers.helpers.logger import LoggerConfig
 from torchrl.trainers.helpers.losses import LossConfig, make_redq_loss
@@ -33,6 +33,54 @@ from torchrl.trainers.helpers.models import make_redq_model, REDQModelConfig
 from torchrl.trainers.helpers.replay_buffer import make_replay_buffer, ReplayArgsConfig
 from torchrl.trainers.helpers.trainers import make_trainer, TrainerConfig
 from torchrl.trainers.loggers.utils import generate_exp_name, get_logger
+from torchrl.envs.transforms import RewardScaling, TransformedEnv, FlattenObservation, Compose
+
+from torchrl.envs import ParallelEnv, TransformedEnv, R3MTransform, SelectTransform
+from torchrl.envs import (
+    CatTensors,
+    DoubleToFloat,
+    EnvCreator,
+    ObservationNorm,
+    ParallelEnv,
+)
+from rlhive.rl_envs import RoboHiveEnv
+def make_env(
+                task,
+                reward_scaling,
+                device
+            ):
+    base_env = RoboHiveEnv(task, device=device)
+    env = make_transformed_env(env=base_env, reward_scaling=reward_scaling)
+
+    return env
+
+
+def make_transformed_env(
+    env,
+    reward_scaling=5.0,
+    stats=None,
+):
+    """
+    Apply transforms to the env (such as reward scaling and state normalization)
+    """
+    env = TransformedEnv(env, SelectTransform("solved", "pixels", "observation"))
+    env.append_transform(Compose(R3MTransform('resnet50', in_keys=["pixels"], download=True), FlattenObservation(-2, -1, in_keys=["r3m_vec"]))) # Necessary to Compose R3MTransform with FlattenObservation; Track bug: https://github.com/pytorch/rl/issues/802
+    env.append_transform(RewardScaling(loc=0.0, scale=reward_scaling))
+    selected_keys = ["r3m_vec", "observation"]
+    out_key = "observation_vector"
+    env.append_transform(CatTensors(in_keys=selected_keys, out_key=out_key))
+
+
+    #  we normalize the states
+    if stats is None:
+        _stats = {"loc": 0.0, "scale": 1.0}
+    else:
+        _stats = stats
+    env.append_transform(
+        ObservationNorm(**_stats, in_keys=[out_key], standard_normal=True)
+    )
+    env.append_transform(DoubleToFloat(in_keys=[out_key], in_keys_inv=[]))
+    return env
 
 config_fields = [
     (config_field.name, config_field.type, config_field)
@@ -65,25 +113,10 @@ DEFAULT_REWARD_SCALING = {
 
 @hydra.main(version_base=None, config_path=".", config_name="config")
 def main(cfg: "DictConfig"):  # noqa: F821
-
-    cfg = correct_for_frame_skip(cfg)
-
-    if not isinstance(cfg.reward_scaling, float):
-        cfg.reward_scaling = DEFAULT_REWARD_SCALING.get(cfg.env_name, 5.0)
-
     device = (
         torch.device("cpu")
         if torch.cuda.device_count() == 0
         else torch.device("cuda:0")
-    )
-
-    exp_name = "_".join(
-        [
-            "REDQ",
-            cfg.exp_name,
-            str(uuid.uuid4())[:8],
-            datetime.now().strftime("%y_%m_%d-%H_%M_%S"),
-        ]
     )
 
     exp_name = generate_exp_name("REDQ", cfg.exp_name)
@@ -96,26 +129,28 @@ def main(cfg: "DictConfig"):  # noqa: F821
     if not cfg.vecnorm and cfg.norm_stats:
         if not hasattr(cfg, "init_env_steps"):
             raise AttributeError("init_env_steps missing from arguments.")
-        key = ("next", "pixels") if cfg.from_pixels else ("next", "observation_vector")
+        key = ("next", "observation_vector")
         init_env_steps = cfg.init_env_steps
         stats = {"loc": None, "scale": None}
     elif cfg.from_pixels:
         stats = {"loc": 0.5, "scale": 0.5}
 
-    proof_env = transformed_env_constructor(
-        cfg=cfg,
-        use_env_creator=False,
-        stats=stats,
-    )()
+    proof_env = make_env(
+        task=cfg.env_name,
+        reward_scaling=cfg.reward_scaling,
+        device=device,
+    )
     initialize_observation_norm_transforms(
         proof_environment=proof_env, num_iter=init_env_steps, key=key
     )
     _, obs_norm_state_dict = retrieve_observation_norms_state_dict(proof_env)[0]
 
+    print(proof_env)
     model = make_redq_model(
         proof_env,
         cfg=cfg,
         device=device,
+        in_keys=["observation_vector"],
     )
     loss_module, target_net_updater = make_redq_loss(model, cfg)
 
@@ -143,12 +178,17 @@ def main(cfg: "DictConfig"):  # noqa: F821
         action_dim_gsde, state_dim_gsde = None, None
 
     proof_env.close()
-    create_env_fn = parallel_env_constructor(
-        cfg=cfg,
-        obs_norm_state_dict=obs_norm_state_dict,
-        action_dim_gsde=action_dim_gsde,
-        state_dim_gsde=state_dim_gsde,
-    )
+    #create_env_fn = parallel_env_constructor(
+    #    cfg=cfg,
+    #    obs_norm_state_dict=obs_norm_state_dict,
+    #    action_dim_gsde=action_dim_gsde,
+    #    state_dim_gsde=state_dim_gsde,
+    #)
+    create_env_fn = make_env(  ## Pass EnvBase instead of the create_env_fn
+                        task=cfg.env_name,
+                        reward_scaling=cfg.reward_scaling,
+                        device=device,
+                    )
 
     collector = make_collector_offpolicy(
         make_env=create_env_fn,
@@ -162,14 +202,19 @@ def main(cfg: "DictConfig"):  # noqa: F821
 
     replay_buffer = make_replay_buffer(device, cfg)
 
-    recorder = transformed_env_constructor(
-        cfg,
-        video_tag=video_tag,
-        norm_obs_only=True,
-        obs_norm_state_dict=obs_norm_state_dict,
-        logger=logger,
-        use_env_creator=False,
-    )()
+    #recorder = transformed_env_constructor(
+    #    cfg,
+    #    video_tag=video_tag,
+    #    norm_obs_only=True,
+    #    obs_norm_state_dict=obs_norm_state_dict,
+    #    logger=logger,
+    #    use_env_creator=False,
+    #)()
+    recorder = make_env(
+        task=cfg.env_name,
+        reward_scaling=cfg.reward_scaling,
+        device=device,
+    )
 
     # remove video recorder from recorder to have matching state_dict keys
     if cfg.record_video:
