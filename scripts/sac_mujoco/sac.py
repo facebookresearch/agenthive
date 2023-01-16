@@ -46,16 +46,20 @@ from torchrl.trainers import Recorder
 
 from rlhive.rl_envs import RoboHiveEnv
 from torchrl.envs import ParallelEnv, TransformedEnv, R3MTransform, SelectTransform
+from rrl import RRLTransform
 
 os.environ['WANDB_MODE'] = 'offline' ## offline sync. TODO: Remove this behavior
 
 def make_env(
                 task,
+                visual_transform,
                 reward_scaling,
                 device
             ):
+    assert visual_transform in ('rrl', 'r3m')
     base_env = RoboHiveEnv(task, device=device)
-    env = make_transformed_env(env=base_env, reward_scaling=reward_scaling)
+    env = make_transformed_env(env=base_env, reward_scaling=reward_scaling, visual_transform=visual_transform)
+    print(env)
 
     return env
 
@@ -63,15 +67,24 @@ def make_env(
 def make_transformed_env(
     env,
     reward_scaling=5.0,
+    visual_transform='r3m',
     stats=None,
 ):
     """
     Apply transforms to the env (such as reward scaling and state normalization)
     """
     env = TransformedEnv(env, SelectTransform("solved", "pixels", "observation"))
-    env.append_transform(Compose(R3MTransform('resnet50', in_keys=["pixels"], download=True), FlattenObservation(-2, -1, in_keys=["r3m_vec"]))) # Necessary to Compose R3MTransform with FlattenObservation; Track bug: https://github.com/pytorch/rl/issues/802
+    if visual_transform == 'rrl':
+        vec_keys = ["rrl_vec"]
+        selected_keys = ["observation", "rrl_vec"]
+        env.append_transform(Compose(RRLTransform('resnet50', in_keys=["pixels"], download=True), FlattenObservation(-2, -1, in_keys=vec_keys))) # Necessary to Compose R3MTransform with FlattenObservation; Track bug: https://github.com/pytorch/rl/issues/802
+    elif visual_transform == 'r3m':
+        vec_keys = ["r3m_vec"]
+        selected_keys = ["observation", "r3m_vec"]
+        env.append_transform(Compose(R3MTransform('resnet50', in_keys=["pixels"], download=True), FlattenObservation(-2, -1, in_keys=vec_keys))) # Necessary to Compose R3MTransform with FlattenObservation; Track bug: https://github.com/pytorch/rl/issues/802
+    else:
+        raise NotImplementedError
     env.append_transform(RewardScaling(loc=0.0, scale=reward_scaling))
-    selected_keys = ["r3m_vec", "observation"]
     out_key = "observation_vector"
     env.append_transform(CatTensors(in_keys=selected_keys, out_key=out_key))
 
@@ -171,6 +184,7 @@ def main(args: DictConfig):
     # Create Environment
     env_configs = {
                     "reward_scaling": args.reward_scaling,
+                    "visual_transform": args.visual_transform,
                     "device": args.device,
                   }
     train_env = make_env(task=args.task, **env_configs)

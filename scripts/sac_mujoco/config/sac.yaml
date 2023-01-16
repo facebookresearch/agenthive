@@ -3,7 +3,8 @@ default:
     - override hydra/launcher: local
 
 # Logger
-exp_name: ${task}_sac_r3m
+exp_name: ${task}_sac_${visual_transform}
+visual_transform: r3m
 record_interval: 1
 device: "cuda:0"
 
