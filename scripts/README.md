@@ -37,3 +37,35 @@ To run a small experiment for testing, run the following command:
 cd scripts/sac_mujoco
 sim_backend=MUJOCO MUJOCO_GL=egl python sac.py -m total_frames=2000 init_random_frames=25 buffer_size=2000 hydra/launcher=slurm hydra/output=slurm
 ```
+
+## Parameter Sweep
+1. R3M and RRL experiments: `visual_transform=r3m,rrl`  
+2. Multiple seeds: `seed=42,43,44`  
+3. List of environments: 
+  ```
+task=visual_franka_slide_random-v3,\  
+     visual_franka_slide_close-v3,\  
+     visual_franka_slide_open-v3,\  
+     visual_franka_micro_random-v3,\  
+     visual_franka_micro_close-v3,\  
+     visual_franka_micro_open-v3,\  
+     visual_kitchen_knob1_off-v3,\  
+     visual_kitchen_knob1_on-v3,\  
+     visual_kitchen_knob2_off-v3,\  
+     visual_kitchen_knob2_on-v3,\  
+     visual_kitchen_knob3_off-v3,\  
+     visual_kitchen_knob3_on-v3,\  
+     visual_kitchen_knob4_off-v3,\  
+     visual_kitchen_knob4_on-v3,\  
+     visual_kitchen_light_off-v3,\  
+     visual_kitchen_light_on-v3,\  
+     visual_kitchen_sdoor_close-v3,\  
+     visual_kitchen_sdoor_open-v3,\  
+     visual_kitchen_ldoor_close-v3,\  
+     visual_kitchen_ldoor_open-v3,\  
+     visual_kitchen_rdoor_close-v3,\  
+     visual_kitchen_rdoor_open-v3,\  
+     visual_kitchen_micro_close-v3,\  
+     visual_kitchen_micro_open-v3,\  
+     visual_kitchen_close-v3  
+  ```
