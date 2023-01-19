@@ -7,4 +7,5 @@ from .envs import register_franka_envs, register_kitchen_envs
 
 register_franka_envs()
 register_kitchen_envs()
+
 from .rl_envs import RoboHiveEnv
