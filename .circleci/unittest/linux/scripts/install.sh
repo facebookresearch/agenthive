@@ -54,7 +54,7 @@ python -c "import functorch"
 
 # mj_envs
 #git clone -c submodule.mj_envs/sims/neuromuscular_sim.update=none --branch v0.4dev --recursive https://github.com/vikashplus/mj_envs.git third_party/mj_envs
-git clone -c submodule.mj_envs/sims/neuromuscular_sim.update=none --branch add_all_xmls --recursive https://github.com/vmoens/mj_envs.git third_party/mj_envs
+git clone -c submodule.mj_envs/sims/neuromuscular_sim.update=none --branch v0.3dev_standalone --recursive https://github.com/vmoens/mj_envs.git third_party/mj_envs
 cd third_party/mj_envs
 pip install .
 cd ../..
