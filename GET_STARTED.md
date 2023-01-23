@@ -97,7 +97,7 @@ interchangeability with other loggers):
 import argparse
 import os
 
-from torchrl.trainers.loggers import WandbLogger
+from torchrl.record.loggers import WandbLogger
 import torch
 
 parser = argparse.ArgumentParser()
