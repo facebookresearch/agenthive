@@ -111,19 +111,7 @@ torchrl examples:
 - [torchrl](https://github.com/pytorch/rl/tree/main/examples)
 - [torchrl_examples](https://github.com/compsciencelab/torchrl_examples)
 
-*UNSTABLE*: One can train a model in state-only or with pixels.
-When using pixels, the current API covers the R3M pipeline. Using a plain CNN is
-an upcoming feature.
-The entry point for all model trainings is `rlhive/sim_algos/run.py`.
-
-#### State-only
-
-As of now, one needs to specify the model and exploration method.
-```bash
-python run.py +model=sac +exploration=gaussian
-```
-
-## Exexution
+## Execution
 
 RLHive is optimized for the `MUJOCO` backend. Make sure to set the `sim_backend` environment variable to `"MUJOCO"`
 before running the code:
@@ -135,40 +123,9 @@ sim_backend=MUJOCO python script.py
 RLHive has two core dependencies: torchrl and RoboHive. RoboHive relies on mujoco 
 and mujoco-py for physics simulation and rendering. As of now, RoboHive requires 
 you to use the old mujoco bindings as well as the v0.13 of gym.
-TorchRL provides [detailed instructions](https://github.com/facebookresearch/rl/pull/375) 
+TorchRL provides [detailed instructions](https://pytorch.org/rl/reference/generated/knowledge_base/MUJOCO_INSTALLATION.html#installing-mujoco). 
 on how to setup an environment with the old mujoco bindings.
 
-### Create conda env
-```bash
-$ conda create -n rlhive python=3.9
-$ conda activate rlhive
-```
-
-### Installing TorchRL
-```bash
-$ # cuda 11.6
-$ pip3 install torch torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/cu116
-```
-For other cuda versions or nightly builds, check the [torch installation instructions](https://pytorch.org/get-started/locally/).
-To install torchrl, run
-```
-pip install torchrl-nightly
-```
-or install directly from github:
-```
-pip install git+https://github.com/pytorch/rl
-```
-
-### Installing RoboHive
-First clone the repo and install it locally:
-```bash
-$ cd path/to/root
-$ # follow the getting started instructions: https://github.com/vikashplus/mj_envs/tree/v0.3dev#getting-started
-$ cd mj_envs
-$ git checkout v0.3dev
-$ git clone -c submodule.mj_envs/sims/neuromuscular_sim.update=none --branch v0.3dev --recursive https://github.com/vikashplus/mj_envs.git
-$ cd mj_envs
-$ pip install -e .
-```
+See also the [Getting Started](GET_STARTED.md) markdown for more info on setting up your env.
 
 For more complete instructions, check the installation pipeline in `.circleci/unittest/linux/script/install.sh`
