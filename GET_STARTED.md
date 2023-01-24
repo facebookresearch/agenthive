@@ -4,6 +4,8 @@
 ## Installing dependencies
 
 The following code snippet installs the nightly versions of the libraries. For a faster installation, simply install `torchrl-nightly` and `tensordict-nightly`.
+However, we recommand using the `git` version as they will be more likely up-to-date with the latest features, and as we are
+actively working on fine-tuning torchrl for RoboHive usage, keeping the latest version of the library may be beneficial.
 
 ```shell
 module load cuda/11.6 cudnn/v8.4.1.50-cuda.11.6
@@ -25,6 +27,8 @@ python3 -mpip install git+https://github.com/pytorch/rl.git  # or stable or nigh
 python3 -mpip install git+https://github.com/facebookresearch/rlhive.git  # or stable or nightly with pip install torchrl(-nightly)
 
 ```
+
+For more complete instructions, check the installation pipeline in `.circleci/unittest/linux/script/install.sh`
 
 You can run these two commands to check that installation was successful:
 
@@ -78,3 +82,86 @@ if __name__ == "__main__":
         print(data)
 
 ```
+
+## Designing experiments and logging values
+
+TorchRL provides a series of wrappers around common loggers (tensorboard, mlflow, wandb etc).
+We generally default to wandb.
+Here are the details on how to set up your logger: wandb can work in one of two
+modes: `online`, where you need an account and the machine you're running your experiment on must be
+connected to the cloud, and `offline` where the logs are stored locally.
+The latter is more general and easier to collect, hence we suggest you use this mode instead.
+To configure and use your logger using TorchRL, procede as follows (notice that 
+using the plain wandb API is very similar to this, TorchRL's conveniance just relies in the
+interchangeability with other loggers):
+
+```python
+import argparse
+import os
+
+from torchrl.record.loggers import WandbLogger
+import torch
+
+parser = argparse.ArgumentParser()
+
+parser.add_argument("--total_frames", default=300, type=int)
+parser.add_argument("--training_steps", default=3, type=int)
+parser.add_argument("--wandb_exp_name", default="a2c")
+parser.add_argument("--wandb_save_dir", default="./mylogs")
+parser.add_argument("--wandb_project", default="rlhive")
+parser.add_argument("--wandb_mode", default="offline",
+                    choices=["online", "offline"])
+
+if __name__ == "__main__":
+    args = parser.parse_args()
+    training_steps = args.training_steps
+    if args.wandb_mode == "offline":
+        # This will be integrated in torchrl
+        dest_dir = args.wandb_save_dir
+        os.makedirs(dest_dir, exist_ok=True)
+    logger = WandbLogger(
+        exp_name=args.wandb_exp_name,
+        save_dir=dest_dir,
+        project=args.wandb_project,
+        mode=args.wandb_mode,
+    )
+
+    # we collect 3 frames in each batch
+    collector = (torch.randn(3, 4, 0) for _ in range(args.total_frames // 3))
+    total_frames = 0
+    # main loop: collection of batches
+    for batch in collector:
+        for step in range(training_steps):
+            pass
+        total_frames += batch.shape[0]
+        # We log according to the frames, which we believe is the less subject to experiment
+        # hyperparameters
+        logger.log_scalar("loss_value", torch.randn([]).item(),
+                          step=total_frames)
+        # one can log videos too! But custom steps do not work as expected :(
+        video = torch.randint(255, (10, 11, 3, 64, 64))  # 10 videos of 11 frames, 64x64 pixels
+        logger.log_video("demo", video)
+
+```
+
+
+This script will save your logs in `./mylogs`. Don't worry too much about `project` or `entity`, which can be [overwritten
+at upload time](https://docs.wandb.ai/ref/cli/wandb-sync):
+
+Once we'll have collected these logs, we will upload them to a wandb account using `wandb sync path/to/log --entity someone --project something`.
+
+## What to log
+
+In general, experiments should log the following items:
+- dense reward (train and test)
+- sparse reward (train and test)
+- success perc (train and test)
+- video: after every 1M runs or so, a test run should be performed. A video recorder should be appended
+  to the test env to log the behaviour.
+- number of training steps: since our "x"-axis will be the number of frames collected, keeping track of the
+  training steps will help us interpolate one with the other.
+- For behavioural cloning we should log the number of epochs instead.
+
+## A more concrete example
+
+TODO
