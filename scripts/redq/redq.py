@@ -47,11 +47,22 @@ from rlhive.rl_envs import RoboHiveEnv
 def make_env(
                 task,
                 reward_scaling,
-                device
+                device,
+                obs_norm_state_dict=None,
+                action_dim_gsde=None,
+                state_dim_gsde=None,
             ):
     base_env = RoboHiveEnv(task, device=device)
     env = make_transformed_env(env=base_env, reward_scaling=reward_scaling)
 
+    if not obs_norm_state_dict is None:
+        obs_norm = ObservationNorm(**obs_norm_state_dict, in_keys=["observation_vector"])
+        env.append_transform(obs_norm)
+
+    if not action_dim_gsde is None:
+        env.append_transform(
+            gSDENoise(action_dim=action_dim_gsde, state_dim=state_dim_gsde)
+        )
     return env
 
 
@@ -178,16 +189,13 @@ def main(cfg: "DictConfig"):  # noqa: F821
         action_dim_gsde, state_dim_gsde = None, None
 
     proof_env.close()
-    #create_env_fn = parallel_env_constructor(
-    #    cfg=cfg,
-    #    obs_norm_state_dict=obs_norm_state_dict,
-    #    action_dim_gsde=action_dim_gsde,
-    #    state_dim_gsde=state_dim_gsde,
-    #)
     create_env_fn = make_env(  ## Pass EnvBase instead of the create_env_fn
                         task=cfg.env_name,
                         reward_scaling=cfg.reward_scaling,
                         device=device,
+                        obs_norm_state_dict=obs_norm_state_dict,
+                        action_dim_gsde=action_dim_gsde,
+                        state_dim_gsde=state_dim_gsde
                     )
 
     collector = make_collector_offpolicy(
@@ -214,6 +222,9 @@ def main(cfg: "DictConfig"):  # noqa: F821
         task=cfg.env_name,
         reward_scaling=cfg.reward_scaling,
         device=device,
+        obs_norm_state_dict=obs_norm_state_dict,
+        action_dim_gsde=action_dim_gsde,
+        state_dim_gsde=state_dim_gsde
     )
 
     # remove video recorder from recorder to have matching state_dict keys
