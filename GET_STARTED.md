@@ -28,6 +28,8 @@ python3 -mpip install git+https://github.com/facebookresearch/rlhive.git  # or s
 
 ```
 
+For more complete instructions, check the installation pipeline in `.circleci/unittest/linux/script/install.sh`
+
 You can run these two commands to check that installation was successful:
 
 ```shell
