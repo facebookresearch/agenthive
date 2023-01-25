@@ -1,4 +1,7 @@
-# Make all the necessary imports for training
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+#
+# This source code is licensed under the MIT license found in the
+# LICENSE file in the root directory of this source tree.
 
 
 import os
@@ -15,8 +18,7 @@ import tqdm
 import hydra
 from omegaconf import DictConfig, OmegaConf, open_dict
 import wandb
-#from torchrl.objectives import SACLoss
-from sac_loss import SACLoss
+from torchrl.objectives import SACLoss
 
 from torch import nn, optim
 from torchrl.collectors import MultiaSyncDataCollector
@@ -46,7 +48,6 @@ from torchrl.trainers import Recorder
 
 from rlhive.rl_envs import RoboHiveEnv
 from torchrl.envs import ParallelEnv, TransformedEnv, R3MTransform, SelectTransform
-from rlhive.sim_algos.helpers.rrl_transform import RRLTransform
 
 os.environ['WANDB_MODE'] = 'offline' ## offline sync. TODO: Remove this behavior
 
@@ -75,9 +76,9 @@ def make_transformed_env(
     """
     env = TransformedEnv(env, SelectTransform("solved", "pixels", "observation"))
     if visual_transform == 'rrl':
-        vec_keys = ["rrl_vec"]
-        selected_keys = ["observation", "rrl_vec"]
-        env.append_transform(Compose(RRLTransform('resnet50', in_keys=["pixels"], download=True), FlattenObservation(-2, -1, in_keys=vec_keys))) # Necessary to Compose R3MTransform with FlattenObservation; Track bug: https://github.com/pytorch/rl/issues/802
+        vec_keys = ["r3m_vec"]
+        selected_keys = ["observation", "r3m_vec"]
+        env.append_transform(Compose(R3MTransform('resnet50', in_keys=["pixels"], download="IMAGENET1K_V1"), FlattenObservation(-2, -1, in_keys=vec_keys))) # Necessary to Compose R3MTransform with FlattenObservation; Track bug: https://github.com/pytorch/rl/issues/802
     elif visual_transform == 'r3m':
         vec_keys = ["r3m_vec"]
         selected_keys = ["observation", "r3m_vec"]
