@@ -38,4 +38,4 @@ cd ../..
 pip install -e .
 cd $here
 
-pip install wandb tqdm hydra-core
+pip install wandb tqdm hydra-core moviepy
