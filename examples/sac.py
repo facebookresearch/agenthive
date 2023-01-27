@@ -439,21 +439,22 @@ def main(args: DictConfig):
             )
             logger.log_scalar("alpha", np.mean(alphas), step=collected_frames)
             logger.log_scalar("entropy", np.mean(entropies), step=collected_frames)
-        td_record = recorder(None)
-        # success_percentage = evaluate_success(
-        #     env_success_fn=train_env.evaluate_success,
-        #     td_record=td_record,
-        #     eval_traj=args.eval_traj,
-        # )
-        if td_record is not None:
-            rewards_eval.append(
-                (
-                    i,
-                    td_record["total_r_evaluation"]
-                    / 1,  # divide by number of eval worker
+        if i % args.eval_interval == 0:
+            td_record = recorder(None)
+            # success_percentage = evaluate_success(
+            #     env_success_fn=train_env.evaluate_success,
+            #     td_record=td_record,
+            #     eval_traj=args.eval_traj,
+            # )
+            if td_record is not None:
+                rewards_eval.append(
+                    (
+                        i,
+                        td_record["total_r_evaluation"]
+                        / 1,  # divide by number of eval worker
+                    )
                 )
-            )
-            logger.log_scalar("test_reward", rewards_eval[-1][1], step=collected_frames)
+                logger.log_scalar("test_reward", rewards_eval[-1][1], step=collected_frames)
         if len(rewards_eval):
             pbar.set_description(
                 f"reward: {rewards[-1][1]: 4.4f} (r0 = {r0: 4.4f}), test reward: {rewards_eval[-1][1]: 4.4f}"
