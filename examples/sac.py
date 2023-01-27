@@ -38,7 +38,8 @@ from torchrl.modules.distributions import TanhNormal
 
 from torchrl.modules.tensordict_module.actors import ProbabilisticActor, ValueOperator
 
-from torchrl.objectives import SACLoss, SoftUpdate
+from sac_loss import SACLoss
+from torchrl.objectives import SoftUpdate
 from torchrl.record.loggers import WandbLogger
 from torchrl.trainers import Recorder
 
