@@ -8,6 +8,9 @@ source $conda_path/etc/profile.d/conda.sh
 here=$(pwd)
 module_path=$HOME/modules/
 
+module purge
+module load cuda/11.6
+
 conda env remove -n rlhive -y
 
 conda create -n rlhive -y python=3.8
