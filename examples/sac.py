@@ -1,8 +1,3 @@
-# TODO
-# Simplify
-# logger
-# check SAC loss vs torchrl's
-# Make all the necessary imports for training
 import os
 
 os.environ["sim_backend"] = "MUJOCO"
