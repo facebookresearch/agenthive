@@ -4,21 +4,25 @@
 # LICENSE file in the root directory of this source tree.
 
 
-import os
-import gc
 import argparse
-import yaml
+import gc
+import os
 from typing import Optional
+
+import hydra
 
 import numpy as np
 import torch
 import torch.cuda
 import tqdm
-
-import hydra
-from omegaconf import DictConfig, OmegaConf, open_dict
 import wandb
-from torchrl.objectives import SACLoss
+import yaml
+from omegaconf import DictConfig, OmegaConf, open_dict
+from rlhive.rl_envs import RoboHiveEnv
+from rlhive.sim_algos.helpers.rrl_transform import RRLTransform
+
+# from torchrl.objectives import SACLoss
+from sac_loss import SACLoss
 
 from torch import nn, optim
 from torchrl.collectors import MultiaSyncDataCollector
@@ -33,10 +37,15 @@ from torchrl.envs import (
     ObservationNorm,
     ParallelEnv,
 )
-from torchrl.envs import EnvCreator
 from torchrl.envs.libs.dm_control import DMControlEnv
 from torchrl.envs.libs.gym import GymEnv
-from torchrl.envs.transforms import RewardScaling, TransformedEnv, FlattenObservation, Compose
+from torchrl.envs.transforms import (
+    Compose,
+    FlattenObservation,
+    RewardScaling,
+    TransformedEnv,
+)
+from torchrl.envs import ParallelEnv, R3MTransform, SelectTransform, TransformedEnv
 from torchrl.envs.utils import set_exploration_mode
 from torchrl.modules import MLP, NormalParamWrapper, ProbabilisticActor, SafeModule
 from torchrl.modules.distributions import TanhNormal
@@ -46,21 +55,15 @@ from torchrl.modules.tensordict_module.actors import ProbabilisticActor, ValueOp
 from torchrl.objectives import SoftUpdate
 from torchrl.trainers import Recorder
 
-from rlhive.rl_envs import RoboHiveEnv
-from torchrl.envs import ParallelEnv, TransformedEnv, R3MTransform, SelectTransform
+os.environ["WANDB_MODE"] = "offline"  ## offline sync. TODO: Remove this behavior
 
-os.environ['WANDB_MODE'] = 'offline' ## offline sync. TODO: Remove this behavior
-
-def make_env(
-                task,
-                visual_transform,
-                reward_scaling,
-                from_pixels,
-                device
-            ):
-    assert visual_transform in ('rrl', 'r3m')
-    base_env = RoboHiveEnv(task, from_pixels=from_pixels, device=device)
-    env = make_transformed_env(env=base_env, reward_scaling=reward_scaling, visual_transform=visual_transform, from_pixels=from_pixels)
+def make_env(task, visual_transform, reward_scaling, device, from_pixels):
+    assert visual_transform in ("rrl", "r3m")
+    base_env = RoboHiveEnv(task, device=device)
+    env = make_transformed_env(
+        env=base_env, reward_scaling=reward_scaling, visual_transform=visual_transform, from_pixels=from_pixels
+    )
+    print(env)
 
     return env
 
@@ -69,7 +72,7 @@ def make_transformed_env(
     env,
     from_pixels,
     reward_scaling=5.0,
-    visual_transform='r3m',
+    visual_transform="r3m",
     stats=None,
 ):
     """
@@ -94,7 +97,6 @@ def make_transformed_env(
     out_key = "observation_vector"
     env.append_transform(CatTensors(in_keys=selected_keys, out_key=out_key))
 
-
     #  we normalize the states
     if stats is None:
         _stats = {"loc": 0.0, "scale": 1.0}
@@ -106,35 +108,36 @@ def make_transformed_env(
     env.append_transform(DoubleToFloat(in_keys=[out_key], in_keys_inv=[]))
     return env
 
+
 def make_recorder(
-                    task: str,
-                    frame_skip: int,
-                    record_interval: int,
-                    actor_model_explore: object,
-                    eval_traj: int,
-                    env_configs: dict,
-                 ):
+    task: str,
+    frame_skip: int,
+    record_interval: int,
+    actor_model_explore: object,
+    eval_traj: int,
+    env_configs: dict,
+):
     test_env = make_env(task=task, **env_configs)
     recorder_obj = Recorder(
-        record_frames=eval_traj*test_env.horizon,
+        record_frames=eval_traj * test_env.horizon,
         frame_skip=frame_skip,
         policy_exploration=actor_model_explore,
         recorder=test_env,
         exploration_mode="mean",
         record_interval=record_interval,
         log_keys=["reward", "solved"],
-        out_keys={"reward": "r_evaluation", "solved" : "success"}
+        out_keys={"reward": "r_evaluation", "solved": "success"},
     )
     return recorder_obj
 
 
 def make_replay_buffer(
-                        prb: bool,
-                        buffer_size: int,
-                        buffer_scratch_dir: str,
-                        device: torch.device,
-                        make_replay_buffer: int = 3
-                      ):
+    prb: bool,
+    buffer_size: int,
+    buffer_scratch_dir: str,
+    device: torch.device,
+    make_replay_buffer: int = 3,
+):
     if prb:
         replay_buffer = TensorDictPrioritizedReplayBuffer(
             alpha=0.7,
@@ -160,11 +163,7 @@ def make_replay_buffer(
     return replay_buffer
 
 
-def evaluate_success(
-                        env_success_fn,
-                        td_record: dict,
-                        eval_traj: int
-                    ):
+def evaluate_success(env_success_fn, td_record: dict, eval_traj: int):
     td_record["success"] = td_record["success"].reshape((eval_traj, -1))
     paths = []
     for traj, solved_traj in zip(range(eval_traj), td_record["success"]):
@@ -172,7 +171,6 @@ def evaluate_success(
         paths.append(path)
     success_percentage = env_success_fn(paths)
     return success_percentage
-
 
 
 @hydra.main(config_name="sac.yaml", config_path="config")
@@ -305,22 +303,21 @@ def main(args: DictConfig):
 
     # Make Replay Buffer
     replay_buffer = make_replay_buffer(
-                                        prb=args.prb,
-                                        buffer_size=args.buffer_size,
-                                        buffer_scratch_dir=args.buffer_scratch_dir,
-                                        device=device,
-                                      )
-
+        prb=args.prb,
+        buffer_size=args.buffer_size,
+        buffer_scratch_dir=args.buffer_scratch_dir,
+        device=device,
+    )
 
     # Trajectory recorder for evaluation
     recorder = make_recorder(
-                                task=args.task,
-                                frame_skip=args.frame_skip,
-                                record_interval=args.record_interval,
-                                actor_model_explore=actor_model_explore,
-                                eval_traj=args.eval_traj,
-                                env_configs=env_configs,
-                            )
+        task=args.task,
+        frame_skip=args.frame_skip,
+        record_interval=args.record_interval,
+        actor_model_explore=actor_model_explore,
+        eval_traj=args.eval_traj,
+        env_configs=env_configs,
+    )
 
     # Optimizers
     params = list(loss_module.parameters()) + list([loss_module.log_alpha])
@@ -424,10 +421,10 @@ def main(args: DictConfig):
                 )
             td_record = recorder(None)
             success_percentage = evaluate_success(
-                                                    env_success_fn=train_env.evaluate_success,
-                                                    td_record=td_record,
-                                                    eval_traj=args.eval_traj
-                                                 )
+                env_success_fn=train_env.evaluate_success,
+                td_record=td_record,
+                eval_traj=args.eval_traj,
+            )
             if td_record is not None:
                 rewards_eval.append(
                     (
@@ -446,6 +443,7 @@ def main(args: DictConfig):
             gc.collect()
 
         collector.shutdown()
+
 
 if __name__ == "__main__":
     main()

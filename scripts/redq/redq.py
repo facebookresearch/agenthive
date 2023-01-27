@@ -10,8 +10,25 @@ from datetime import datetime
 import hydra
 import torch.cuda
 from hydra.core.config_store import ConfigStore
+from rlhive.rl_envs import RoboHiveEnv
 from torchrl.envs import EnvCreator, ParallelEnv
-from torchrl.envs.transforms import RewardScaling, TransformedEnv
+from torchrl.envs.transforms import (
+    Compose,
+    FlattenObservation,
+    RewardScaling,
+    TransformedEnv,
+)
+
+from torchrl.envs import (
+    CatTensors,
+    DoubleToFloat,
+    EnvCreator,
+    ObservationNorm,
+    ParallelEnv,
+    R3MTransform,
+    SelectTransform,
+    TransformedEnv,
+)
 from torchrl.envs.utils import set_exploration_mode
 from torchrl.modules import OrnsteinUhlenbeckProcessWrapper
 from torchrl.record import VideoRecorder
@@ -25,7 +42,7 @@ from torchrl.trainers.helpers.envs import (
     initialize_observation_norm_transforms,
     parallel_env_constructor,
     retrieve_observation_norms_state_dict,
-    #transformed_env_constructor,
+    # transformed_env_constructor,
 )
 from torchrl.trainers.helpers.logger import LoggerConfig
 from torchrl.trainers.helpers.losses import LossConfig, make_redq_loss
@@ -33,30 +50,23 @@ from torchrl.trainers.helpers.models import make_redq_model, REDQModelConfig
 from torchrl.trainers.helpers.replay_buffer import make_replay_buffer, ReplayArgsConfig
 from torchrl.trainers.helpers.trainers import make_trainer, TrainerConfig
 from torchrl.trainers.loggers.utils import generate_exp_name, get_logger
-from torchrl.envs.transforms import RewardScaling, TransformedEnv, FlattenObservation, Compose
 
-from torchrl.envs import ParallelEnv, TransformedEnv, R3MTransform, SelectTransform
-from torchrl.envs import (
-    CatTensors,
-    DoubleToFloat,
-    EnvCreator,
-    ObservationNorm,
-    ParallelEnv,
-)
-from rlhive.rl_envs import RoboHiveEnv
+
 def make_env(
-                task,
-                reward_scaling,
-                device,
-                obs_norm_state_dict=None,
-                action_dim_gsde=None,
-                state_dim_gsde=None,
-            ):
+    task,
+    reward_scaling,
+    device,
+    obs_norm_state_dict=None,
+    action_dim_gsde=None,
+    state_dim_gsde=None,
+):
     base_env = RoboHiveEnv(task, device=device)
     env = make_transformed_env(env=base_env, reward_scaling=reward_scaling)
 
     if not obs_norm_state_dict is None:
-        obs_norm = ObservationNorm(**obs_norm_state_dict, in_keys=["observation_vector"])
+        obs_norm = ObservationNorm(
+            **obs_norm_state_dict, in_keys=["observation_vector"]
+        )
         env.append_transform(obs_norm)
 
     if not action_dim_gsde is None:
@@ -75,12 +85,16 @@ def make_transformed_env(
     Apply transforms to the env (such as reward scaling and state normalization)
     """
     env = TransformedEnv(env, SelectTransform("solved", "pixels", "observation"))
-    env.append_transform(Compose(R3MTransform('resnet50', in_keys=["pixels"], download=True), FlattenObservation(-2, -1, in_keys=["r3m_vec"]))) # Necessary to Compose R3MTransform with FlattenObservation; Track bug: https://github.com/pytorch/rl/issues/802
+    env.append_transform(
+        Compose(
+            R3MTransform("resnet50", in_keys=["pixels"], download=True),
+            FlattenObservation(-2, -1, in_keys=["r3m_vec"]),
+        )
+    )  # Necessary to Compose R3MTransform with FlattenObservation; Track bug: https://github.com/pytorch/rl/issues/802
     env.append_transform(RewardScaling(loc=0.0, scale=reward_scaling))
     selected_keys = ["r3m_vec", "observation"]
     out_key = "observation_vector"
     env.append_transform(CatTensors(in_keys=selected_keys, out_key=out_key))
-
 
     #  we normalize the states
     if stats is None:
@@ -92,6 +106,7 @@ def make_transformed_env(
     )
     env.append_transform(DoubleToFloat(in_keys=[out_key], in_keys_inv=[]))
     return env
+
 
 config_fields = [
     (config_field.name, config_field.type, config_field)
@@ -190,13 +205,13 @@ def main(cfg: "DictConfig"):  # noqa: F821
 
     proof_env.close()
     create_env_fn = make_env(  ## Pass EnvBase instead of the create_env_fn
-                        task=cfg.env_name,
-                        reward_scaling=cfg.reward_scaling,
-                        device=device,
-                        obs_norm_state_dict=obs_norm_state_dict,
-                        action_dim_gsde=action_dim_gsde,
-                        state_dim_gsde=state_dim_gsde
-                    )
+        task=cfg.env_name,
+        reward_scaling=cfg.reward_scaling,
+        device=device,
+        obs_norm_state_dict=obs_norm_state_dict,
+        action_dim_gsde=action_dim_gsde,
+        state_dim_gsde=state_dim_gsde,
+    )
 
     collector = make_collector_offpolicy(
         make_env=create_env_fn,
@@ -210,21 +225,21 @@ def main(cfg: "DictConfig"):  # noqa: F821
 
     replay_buffer = make_replay_buffer(device, cfg)
 
-    #recorder = transformed_env_constructor(
+    # recorder = transformed_env_constructor(
     #    cfg,
     #    video_tag=video_tag,
     #    norm_obs_only=True,
     #    obs_norm_state_dict=obs_norm_state_dict,
     #    logger=logger,
     #    use_env_creator=False,
-    #)()
+    # )()
     recorder = make_env(
         task=cfg.env_name,
         reward_scaling=cfg.reward_scaling,
         device=device,
         obs_norm_state_dict=obs_norm_state_dict,
         action_dim_gsde=action_dim_gsde,
-        state_dim_gsde=state_dim_gsde
+        state_dim_gsde=state_dim_gsde,
     )
 
     # remove video recorder from recorder to have matching state_dict keys

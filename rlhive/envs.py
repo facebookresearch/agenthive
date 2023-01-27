@@ -6,10 +6,12 @@
 # Custom env reg for RoboHive usage in TorchRL
 # Pixel rendering will be queried by torchrl, so we don't include those keys in visual_obs_keys_wt
 import os
+import warnings
 from pathlib import Path
 
-import mj_envs.envs.env_variants.register_env_variant
 import mj_envs.envs.multi_task.substeps1
+
+from mj_envs.envs.env_variants import register_env_variant
 
 visual_obs_keys_wt = mj_envs.envs.multi_task.substeps1.visual_obs_keys_wt
 
@@ -70,7 +72,7 @@ def register_kitchen_envs():
         "kitchen_rdoor_open-v3",
         "kitchen_micro_close-v3",
         "kitchen_micro_open-v3",
-        "kitchen_close-v3",
+        # "kitchen_close-v3",
     ]
 
     visual_obs_keys_wt = {
@@ -80,10 +82,17 @@ def register_kitchen_envs():
         "rgb:left_cam:224x224:2d": 1.0,
     }
     for env in env_list:
-        new_env_name = "visual_" + env
-        mj_envs.envs.env_variants.register_env_variant(
-            env, variants={"obs_keys_wt": visual_obs_keys_wt}, variant_id=new_env_name
-        )
+        try:
+            new_env_name = "visual_" + env
+            mj_envs.envs.env_variants.register_env_variant(
+                env,
+                variants={"obs_keys_wt": visual_obs_keys_wt},
+                variant_id=new_env_name,
+            )
+        except AssertionError as err:
+            warnings.warn(
+                f"Could not register {new_env_name}, the following error was raised: {err}"
+            )
 
 
 @set_directory(CURR_DIR)
@@ -106,7 +115,14 @@ def register_franka_envs():
         "rgb:left_cam:224x224:2d": 1.0,
     }
     for env in env_list:
-        new_env_name = "visual_" + env
-        mj_envs.envs.env_variants.register_env_variant(
-            env, variants={"obs_keys_wt": visual_obs_keys_wt}, variant_id=new_env_name
-        )
+        try:
+            new_env_name = "visual_" + env
+            mj_envs.envs.env_variants.register_env_variant(
+                env,
+                variants={"obs_keys_wt": visual_obs_keys_wt},
+                variant_id=new_env_name,
+            )
+        except AssertionError as err:
+            warnings.warn(
+                f"Could not register {new_env_name}, the following error was raised: {err}"
+            )
