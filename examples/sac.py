@@ -468,7 +468,7 @@ def main(args: DictConfig):
                 logger.log_scalar(
                     "test_reward", rewards_eval[-1][1], step=collected_frames
                 )
-                solved = td_record["success"].any()
+                solved = float(td_record["success"].any())
                 logger.log_scalar(
                     "success", solved, step=collected_frames
                 )
