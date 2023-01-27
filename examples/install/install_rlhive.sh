@@ -2,12 +2,17 @@
 
 set -e
 
+conda_path=$(conda info | grep -i 'base environment' | awk '{ print $4 }')
+source $conda_path/etc/profile.d/conda.sh
+
 here=$(pwd)
 module_path=$HOME/modules/
 
 conda env remove -n rlhive -y
 
 conda create -n rlhive -y python=3.8
+
+
 conda activate rlhive
 
 python3 -mpip install --pre torch torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/nightly/cu116
