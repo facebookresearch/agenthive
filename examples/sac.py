@@ -1,5 +1,7 @@
 import os
 
+from torchrl.record import VideoRecorder
+
 os.environ["sim_backend"] = "MUJOCO"
 
 import gc
@@ -14,6 +16,8 @@ import torch.cuda
 import tqdm
 from omegaconf import DictConfig
 from rlhive.rl_envs import RoboHiveEnv
+
+from sac_loss import SACLoss
 
 # from torchrl.objectives import SACLoss
 from tensordict import TensorDict
@@ -37,8 +41,6 @@ from torchrl.modules import MLP, NormalParamWrapper, SafeModule
 from torchrl.modules.distributions import TanhNormal
 
 from torchrl.modules.tensordict_module.actors import ProbabilisticActor, ValueOperator
-
-from sac_loss import SACLoss
 from torchrl.objectives import SoftUpdate
 from torchrl.record.loggers import WandbLogger
 from torchrl.trainers import Recorder
@@ -129,8 +131,12 @@ def make_recorder(
     actor_model_explore: object,
     eval_traj: int,
     env_configs: dict,
+    wandb_logger: WandbLogger,
 ):
     test_env = make_env(num_envs=1, task=task, **env_configs)
+    test_env.insert_transform(
+        0, VideoRecorder(wandb_logger, "test", in_keys=["pixels"])
+    )
     recorder_obj = Recorder(
         record_frames=eval_traj * test_env.horizon,
         frame_skip=frame_skip,
@@ -224,7 +230,9 @@ def main(args: DictConfig):
         "visual_transform": args.visual_transform,
         "device": args.device,
     }
-    train_env = make_env(num_envs=args.num_envs, task=args.task, **env_configs).to(device_collection)
+    train_env = make_env(num_envs=args.num_envs, task=args.task, **env_configs).to(
+        device_collection
+    )
 
     # Create Agent
     # Define Actor Network
@@ -448,6 +456,7 @@ def main(args: DictConfig):
             #     eval_traj=args.eval_traj,
             # )
             if td_record is not None:
+                print("recorded", td_record)
                 rewards_eval.append(
                     (
                         i,
@@ -455,7 +464,13 @@ def main(args: DictConfig):
                         / 1,  # divide by number of eval worker
                     )
                 )
-                logger.log_scalar("test_reward", rewards_eval[-1][1], step=collected_frames)
+                logger.log_scalar(
+                    "test_reward", rewards_eval[-1][1], step=collected_frames
+                )
+                logger.log_scalar(
+                    "success", td_record["success"].any(), step=collected_frames
+                )
+
         if len(rewards_eval):
             pbar.set_description(
                 f"reward: {rewards[-1][1]: 4.4f} (r0 = {r0: 4.4f}), test reward: {rewards_eval[-1][1]: 4.4f}"
