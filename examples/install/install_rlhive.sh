@@ -17,7 +17,6 @@ conda env remove -n rlhive -y
 
 conda create -n rlhive -y python=3.8
 
-
 conda activate rlhive
 
 python3 -mpip install --pre torch torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/nightly/cu116
@@ -31,6 +30,12 @@ cd $here
 
 python3 -mpip install git+https://github.com/pytorch-labs/tensordict  # or stable or nightly with pip install tensordict(-nightly)
 python3 -mpip install git+https://github.com/pytorch/rl.git  # or stable or nightly with pip install torchrl(-nightly)
-python3 -mpip install git+https://github.com/facebookresearch/rlhive.git  # or stable or nightly with pip install torchrl(-nightly)
+
+# this
+# python3 -mpip install git+https://github.com/facebookresearch/rlhive.git  # or stable or nightly with pip install torchrl(-nightly)
+# or this
+cd ../..
+pip install -e .
+cd $here
 
 pip install wandb tqdm hydra-core
