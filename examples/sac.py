@@ -329,8 +329,8 @@ def main(args: DictConfig):
     )
 
     # Optimizers
-    params = list(loss_module.parameters()) + list([loss_module.log_alpha])
-    optimizer_actor = optim.Adam(params, lr=args.lr, weight_decay=args.weight_decay)
+    params = list(loss_module.parameters())
+    optimizer = optim.Adam(params, lr=args.lr, weight_decay=args.weight_decay)
 
     rewards = []
     rewards_eval = []
@@ -407,15 +407,18 @@ def main(args: DictConfig):
                 sampled_tensordict = replay_buffer.sample(args.batch_size).clone()
 
                 loss_td = loss_module(sampled_tensordict)
+                print(f'value: {loss_td["state_action_value_actor"].mean():4.4f}')
+                print(f'log_prob: {loss_td["action_log_prob_actor"].mean():4.4f}')
+                print(f'next.state_value: {loss_td["state_value"].mean():4.4f}')
 
                 actor_loss = loss_td["loss_actor"]
                 q_loss = loss_td["loss_qvalue"]
                 alpha_loss = loss_td["loss_alpha"]
 
                 loss = actor_loss + q_loss + alpha_loss
-                optimizer_actor.zero_grad()
+                optimizer.zero_grad()
                 loss.backward()
-                optimizer_actor.step()
+                optimizer.step()
 
                 # update qnet_target params
                 target_net_updater.step()
