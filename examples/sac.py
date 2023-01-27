@@ -328,16 +328,6 @@ def main(args: DictConfig):
         device=device,
     )
 
-    # Trajectory recorder for evaluation
-    recorder = make_recorder(
-        task=args.task,
-        frame_skip=args.frame_skip,
-        record_interval=args.record_interval,
-        actor_model_explore=actor_model_explore,
-        eval_traj=args.eval_traj,
-        env_configs=env_configs,
-    )
-
     # Optimizers
     params = list(loss_module.parameters()) + list([loss_module.log_alpha])
     optimizer_actor = optim.Adam(params, lr=args.lr, weight_decay=args.weight_decay)
@@ -365,6 +355,17 @@ def main(args: DictConfig):
         config=args,
         entity="RLHive",
         mode="offline",
+    )
+
+    # Trajectory recorder for evaluation
+    recorder = make_recorder(
+        task=args.task,
+        frame_skip=args.frame_skip,
+        record_interval=args.record_interval,
+        actor_model_explore=actor_model_explore,
+        eval_traj=args.eval_traj,
+        env_configs=env_configs,
+        wandb_logger=logger,
     )
 
     for i, batch in enumerate(
