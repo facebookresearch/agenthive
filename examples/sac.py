@@ -212,8 +212,8 @@ def dataloader(
 @hydra.main(config_name="sac.yaml", config_path="config")
 def main(args: DictConfig):
     # customize device at will
-    device = "cpu"
-    device_collection = "cpu"
+    device = args.device
+    device_collection = args.device_collection
     torch.manual_seed(args.seed)
     np.random.seed(args.seed)
 
@@ -223,7 +223,7 @@ def main(args: DictConfig):
         "visual_transform": args.visual_transform,
         "device": args.device,
     }
-    train_env = make_env(num_envs=args.num_envs, task=args.task, **env_configs)
+    train_env = make_env(num_envs=args.num_envs, task=args.task, **env_configs).to(device_collection)
 
     # Create Agent
     # Define Actor Network

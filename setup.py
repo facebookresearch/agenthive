@@ -160,7 +160,7 @@ def _main():
             # f"torchrl @ file://{rl_path}",
             "torchrl",
             "gym==0.13",
-            "mj_envs",
+            # "mj_envs",
             # f"mj_envs @ file://{mj_env_path}",
             "numpy",
             "packaging",
