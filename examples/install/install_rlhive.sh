@@ -1,5 +1,7 @@
 #!/bin/zsh
 
+# Instructions to install a fresh anaconda environment with RLHive
+
 set -e
 
 conda_path=$(conda info | grep -i 'base environment' | awk '{ print $4 }')
@@ -30,3 +32,5 @@ cd $here
 python3 -mpip install git+https://github.com/pytorch-labs/tensordict  # or stable or nightly with pip install tensordict(-nightly)
 python3 -mpip install git+https://github.com/pytorch/rl.git  # or stable or nightly with pip install torchrl(-nightly)
 python3 -mpip install git+https://github.com/facebookresearch/rlhive.git  # or stable or nightly with pip install torchrl(-nightly)
+
+pip install wandb tqdm hydra-core

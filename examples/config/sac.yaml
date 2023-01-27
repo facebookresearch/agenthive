@@ -6,7 +6,7 @@ default:
 exp_name: ${task}_sac_${visual_transform}
 visual_transform: r3m
 record_interval: 1
-device: "cpu"
+device: "cuda:0"
 
 # Environment
 task: visual_franka_slide_random-v3
