@@ -467,13 +467,14 @@ def main(args: DictConfig):
                 logger.log_scalar(
                     "test_reward", rewards_eval[-1][1], step=collected_frames
                 )
+                solved = td_record["success"].any()
                 logger.log_scalar(
-                    "success", td_record["success"].any(), step=collected_frames
+                    "success", solved, step=collected_frames
                 )
 
         if len(rewards_eval):
             pbar.set_description(
-                f"reward: {rewards[-1][1]: 4.4f} (r0 = {r0: 4.4f}), test reward: {rewards_eval[-1][1]: 4.4f}"
+                f"reward: {rewards[-1][1]: 4.4f} (r0 = {r0: 4.4f}), test reward: {rewards_eval[-1][1]: 4.4f}, solved: {solved}"
             )
         del batch
         gc.collect()
