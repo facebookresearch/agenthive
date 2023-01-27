@@ -104,8 +104,8 @@ class _RRLNet(Transform):
 
         return observation_spec
 
-    #@staticmethod
-    #def _load_weights(model_name, r3m_instance, dir_prefix):
+    # @staticmethod
+    # def _load_weights(model_name, r3m_instance, dir_prefix):
     #    if model_name not in ("r3m_50", "r3m_34", "r3m_18"):
     #        raise ValueError(
     #            "model_name should be one of 'r3m_50', 'r3m_34' or 'r3m_18'"
@@ -123,7 +123,7 @@ class _RRLNet(Transform):
     #    state_dict = td_flatten.to_dict()
     #    r3m_instance.convnet.load_state_dict(state_dict)
 
-    #def load_weights(self, dir_prefix=None):
+    # def load_weights(self, dir_prefix=None):
     #    self._load_weights(self.model_name, self, dir_prefix)
 
 
@@ -300,7 +300,7 @@ class RRLTransform(Compose):
 
         for transform in transforms:
             self.append(transform)
-        #if self.download:
+        # if self.download:
         #    self[-1].load_weights(dir_prefix=self.download_path)
 
         if self._device is not None:
