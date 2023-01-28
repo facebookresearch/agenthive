@@ -197,9 +197,9 @@ def dataloader(
     ).unflatten_keys(".")
     _prev = None
 
-    params_collection.update_(params)
     collected_frames = 0
     while collected_frames < total_frames:
+        params_collection.update_(params)
         batch = TensorDict(
             {}, batch_size=[fpb, *train_env.batch_size], device=device_collection
         )
@@ -250,7 +250,7 @@ def main(args: DictConfig):
     dist_kwargs = {
         "min": action_spec.space.minimum,
         "max": action_spec.space.maximum,
-        "tanh_loc": False,
+        "tanh_loc": True,
     }
     actor_net = NormalParamWrapper(
         actor_net,
@@ -353,8 +353,8 @@ def main(args: DictConfig):
         project="SAC_TorchRL",
         name=args.exp_name,
         config=args,
-        entity="RLHive",
-        mode="offline",
+        entity=args.wandb_entity,
+        mode=args.wandb_mode,
     )
 
     # Trajectory recorder for evaluation
@@ -386,7 +386,7 @@ def main(args: DictConfig):
         batch = batch.view(-1)
         current_frames = batch.numel()
         collected_frames += current_frames
-        episodes += args.env_per_collector
+        episodes += batch["done"].sum()
         replay_buffer.extend(batch.cpu())
 
         # optimization steps
@@ -434,7 +434,7 @@ def main(args: DictConfig):
                 alphas.append(loss_td["alpha"].item())
                 entropies.append(loss_td["entropy"].item())
 
-        rewards.append((i, batch["reward"].sum().item() / args.env_per_collector))
+        rewards.append((i, batch["reward"].mean().item()))
         logger.log_scalar("train_reward", rewards[-1][1], step=collected_frames)
         logger.log_scalar("optim_steps", optim_steps, step=collected_frames)
         logger.log_scalar("episodes", episodes, step=collected_frames)
