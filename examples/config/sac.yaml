@@ -8,6 +8,8 @@ visual_transform: r3m
 record_interval: 1
 device: "cuda:0"
 device_collection: "cuda:1"
+wandb_entity: "RLHive"
+wandb_mode: "offline"
 
 # Environment
 task: visual_franka_slide_random-v3
