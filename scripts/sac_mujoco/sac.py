@@ -55,18 +55,19 @@ def make_env(
                 task,
                 visual_transform,
                 reward_scaling,
+                from_pixels,
                 device
             ):
     assert visual_transform in ('rrl', 'r3m')
-    base_env = RoboHiveEnv(task, device=device)
-    env = make_transformed_env(env=base_env, reward_scaling=reward_scaling, visual_transform=visual_transform)
-    print(env)
+    base_env = RoboHiveEnv(task, from_pixels=from_pixels, device=device)
+    env = make_transformed_env(env=base_env, reward_scaling=reward_scaling, visual_transform=visual_transform, from_pixels=from_pixels)
 
     return env
 
 
 def make_transformed_env(
     env,
+    from_pixels,
     reward_scaling=5.0,
     visual_transform='r3m',
     stats=None,
@@ -74,17 +75,21 @@ def make_transformed_env(
     """
     Apply transforms to the env (such as reward scaling and state normalization)
     """
-    env = TransformedEnv(env, SelectTransform("solved", "pixels", "observation"))
-    if visual_transform == 'rrl':
-        vec_keys = ["r3m_vec"]
-        selected_keys = ["observation", "r3m_vec"]
-        env.append_transform(Compose(R3MTransform('resnet50', in_keys=["pixels"], download="IMAGENET1K_V1"), FlattenObservation(-2, -1, in_keys=vec_keys))) # Necessary to Compose R3MTransform with FlattenObservation; Track bug: https://github.com/pytorch/rl/issues/802
-    elif visual_transform == 'r3m':
-        vec_keys = ["r3m_vec"]
-        selected_keys = ["observation", "r3m_vec"]
-        env.append_transform(Compose(R3MTransform('resnet50', in_keys=["pixels"], download=True), FlattenObservation(-2, -1, in_keys=vec_keys))) # Necessary to Compose R3MTransform with FlattenObservation; Track bug: https://github.com/pytorch/rl/issues/802
+    if from_pixels:
+        env = TransformedEnv(env, SelectTransform("solved", "pixels", "observation"))
+        if visual_transform == 'rrl':
+            vec_keys = ["rrl_vec"]
+            selected_keys = ["observation", "rrl_vec"]
+            env.append_transform(Compose(RRLTransform('resnet50', in_keys=["pixels"], download=True), FlattenObservation(-2, -1, in_keys=vec_keys))) # Necessary to Compose R3MTransform with FlattenObservation; Track bug: https://github.com/pytorch/rl/issues/802
+        elif visual_transform == 'r3m':
+            vec_keys = ["r3m_vec"]
+            selected_keys = ["observation", "r3m_vec"]
+            env.append_transform(Compose(R3MTransform('resnet50', in_keys=["pixels"], download=True), FlattenObservation(-2, -1, in_keys=vec_keys))) # Necessary to Compose R3MTransform with FlattenObservation; Track bug: https://github.com/pytorch/rl/issues/802
+        else:
+            raise NotImplementedError
     else:
-        raise NotImplementedError
+        env = TransformedEnv(env, SelectTransform("solved", "observation"))
+        selected_keys = ["observation"]
     env.append_transform(RewardScaling(loc=0.0, scale=reward_scaling))
     out_key = "observation_vector"
     env.append_transform(CatTensors(in_keys=selected_keys, out_key=out_key))
@@ -187,6 +192,7 @@ def main(args: DictConfig):
                     "reward_scaling": args.reward_scaling,
                     "visual_transform": args.visual_transform,
                     "device": args.device,
+                    "from_pixels": args.from_pixels,
                   }
     train_env = make_env(task=args.task, **env_configs)
 

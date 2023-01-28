@@ -164,7 +164,7 @@ class RoboHiveEnv(GymEnv):
                 pixel_list.append(pix)
             elif key in self._env.obs_keys:
                 obsvec.append(
-                    observations[key]
+                    observations[key].flatten() if observations[key].ndim == 0 else observations[key]
                 )  # ravel helps with images
         if obsvec:
             obsvec = np.concatenate(obsvec, 0)
