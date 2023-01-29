@@ -424,9 +424,6 @@ def main(args: DictConfig):
 
         # extend the replay buffer with the new data
         batch = batch.view(-1)
-        print(batch["loc"].mean(0))
-        print(batch["scale"].mean(0))
-        print(batch["sample_log_prob"].mean(0))
         current_frames = batch.numel()
         collected_frames += current_frames
         episodes += batch["done"].sum()
