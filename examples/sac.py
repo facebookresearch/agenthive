@@ -1,5 +1,6 @@
 import os
 
+from torchrl.collectors import MultiaSyncDataCollector
 from torchrl.record import VideoRecorder
 
 os.environ["sim_backend"] = "MUJOCO"
@@ -23,13 +24,14 @@ from sac_loss import SACLoss
 from tensordict import TensorDict
 
 from torch import nn, optim
-from torchrl.data import TensorDictReplayBuffer
+from torchrl.data import TensorDictPrioritizedReplayBuffer, TensorDictReplayBuffer
 
 from torchrl.data.replay_buffers.storages import LazyMemmapStorage
 
 # from torchrl.envs import SerialEnv as ParallelEnv, R3MTransform, SelectTransform, TransformedEnv
 from torchrl.envs import (
     CatTensors,
+    EnvCreator,
     ParallelEnv,
     R3MTransform,
     SelectTransform,
@@ -76,7 +78,9 @@ from torchrl.trainers import Recorder
 def make_env(num_envs, task, visual_transform, reward_scaling, device):
     assert visual_transform in ("rrl", "r3m")
     if num_envs > 1:
-        base_env = ParallelEnv(num_envs, lambda: RoboHiveEnv(task, device=device))
+        base_env = ParallelEnv(
+            num_envs, EnvCreator(lambda: RoboHiveEnv(task, device=device))
+        )
     else:
         base_env = RoboHiveEnv(task, device=device)
     env = make_transformed_env(
@@ -132,13 +136,15 @@ def make_recorder(
     eval_traj: int,
     env_configs: dict,
     wandb_logger: WandbLogger,
+    num_envs: int,
 ):
-    test_env = make_env(num_envs=1, task=task, **env_configs)
+    test_env = make_env(num_envs=num_envs, task=task, **env_configs)
     test_env.insert_transform(
         0, VideoRecorder(wandb_logger, "test", in_keys=["pixels"])
     )
+    test_env.reset()
     recorder_obj = Recorder(
-        record_frames=eval_traj * test_env.horizon,
+        record_frames=100, # eval_traj * test_env.horizon,
         frame_skip=frame_skip,
         policy_exploration=actor_model_explore,
         recorder=test_env,
@@ -159,20 +165,34 @@ def make_recorder(
 
 
 def make_replay_buffer(
+    prb: bool,
     buffer_size: int,
     buffer_scratch_dir: str,
     device: torch.device,
-    make_replay_buffer: int = 3,
+    prefetch: int = 10,
 ):
-    replay_buffer = TensorDictReplayBuffer(
-        pin_memory=False,
-        prefetch=make_replay_buffer,
-        storage=LazyMemmapStorage(
-            buffer_size,
-            scratch_dir=buffer_scratch_dir,
-            device=device,
-        ),
-    )
+    if prb:
+        replay_buffer = TensorDictPrioritizedReplayBuffer(
+            alpha=0.7,
+            beta=0.5,
+            pin_memory=False,
+            prefetch=prefetch,
+            storage=LazyMemmapStorage(
+                buffer_size,
+                scratch_dir=buffer_scratch_dir,
+                device=device,
+            ),
+        )
+    else:
+        replay_buffer = TensorDictReplayBuffer(
+            pin_memory=False,
+            prefetch=prefetch,
+            storage=LazyMemmapStorage(
+                buffer_size,
+                scratch_dir=buffer_scratch_dir,
+                device=device,
+            ),
+        )
     return replay_buffer
 
 
@@ -230,9 +250,7 @@ def main(args: DictConfig):
         "visual_transform": args.visual_transform,
         "device": args.device,
     }
-    train_env = make_env(num_envs=args.num_envs, task=args.task, **env_configs).to(
-        device_collection
-    )
+    train_env = make_env(num_envs=args.num_envs, task=args.task, **env_configs)
 
     # Create Agent
     # Define Actor Network
@@ -273,7 +291,7 @@ def main(args: DictConfig):
         distribution_class=dist_class,
         distribution_kwargs=dist_kwargs,
         default_interaction_mode="random",
-        return_log_prob=False,
+        return_log_prob=True,
     )
 
     # Define Critic Network
@@ -305,7 +323,7 @@ def main(args: DictConfig):
     del td
     proof_env.close()
 
-    actor_collection = deepcopy(actor).to(device_collection)
+    # actor_collection = deepcopy(actor).to(device_collection)
 
     actor_model_explore = model[0]
 
@@ -323,9 +341,10 @@ def main(args: DictConfig):
 
     # Make Replay Buffer
     replay_buffer = make_replay_buffer(
+        prb=args.prb,
         buffer_size=args.buffer_size,
         buffer_scratch_dir=args.buffer_scratch_dir,
-        device=device,
+        device="cpu",
     )
 
     # Optimizers
@@ -366,24 +385,48 @@ def main(args: DictConfig):
         eval_traj=args.eval_traj,
         env_configs=env_configs,
         wandb_logger=logger,
+        num_envs=args.num_record_envs,
     )
 
-    for i, batch in enumerate(
-        dataloader(
-            total_frames,
-            frames_per_batch,
-            train_env,
-            actor,
-            actor_collection,
-            device_collection,
-        )
-    ):
+    # collector = dataloader(
+    #         total_frames,
+    #         frames_per_batch,
+    #         train_env,
+    #         actor,
+    #         actor_collection,
+    #         device_collection,
+    #     )
+    collector_device = args.device_collection
+    if isinstance(collector_device, str):
+        collector_device = [collector_device]
+    collector = MultiaSyncDataCollector(
+        create_env_fn=[train_env] * len(collector_device),
+        policy=actor_model_explore,
+        total_frames=args.total_frames,
+        max_frames_per_traj=args.frames_per_batch,
+        frames_per_batch=args.env_per_collector * args.frames_per_batch,
+        init_random_frames=args.init_random_frames,
+        reset_at_each_iter=False,
+        postproc=None,
+        split_trajs=False,
+        devices=collector_device,  # device for execution
+        passing_devices=collector_device,  # device where data will be stored and passed
+        seed=None,
+        pin_memory=False,
+        update_at_each_batch=False,
+        exploration_mode="random",
+    )
+
+    for i, batch in enumerate(collector):
         if r0 is None:
             r0 = batch["reward"].sum(-1).mean().item()
         pbar.update(batch.numel())
 
         # extend the replay buffer with the new data
         batch = batch.view(-1)
+        print(batch["loc"].mean(0))
+        print(batch["scale"].mean(0))
+        print(batch["sample_log_prob"].mean(0))
         current_frames = batch.numel()
         collected_frames += current_frames
         episodes += batch["done"].sum()
@@ -404,12 +447,11 @@ def main(args: DictConfig):
             ):
                 optim_steps += 1
                 # sample from replay buffer
-                sampled_tensordict = replay_buffer.sample(args.batch_size).clone()
+                sampled_tensordict = (
+                    replay_buffer.sample(args.batch_size).clone().to(device)
+                )
 
                 loss_td = loss_module(sampled_tensordict)
-                print(f'value: {loss_td["state_action_value_actor"].mean():4.4f}')
-                print(f'log_prob: {loss_td["action_log_prob_actor"].mean():4.4f}')
-                print(f'next.state_value: {loss_td["state_value"].mean():4.4f}')
 
                 actor_loss = loss_td["loss_actor"]
                 q_loss = loss_td["loss_qvalue"]
@@ -452,29 +494,18 @@ def main(args: DictConfig):
             )
             logger.log_scalar("alpha", np.mean(alphas), step=collected_frames)
             logger.log_scalar("entropy", np.mean(entropies), step=collected_frames)
-        if i % args.eval_interval == 0:
-            td_record = recorder(None)
-            # success_percentage = evaluate_success(
-            #     env_success_fn=train_env.evaluate_success,
-            #     td_record=td_record,
-            #     eval_traj=args.eval_traj,
-            # )
-            if td_record is not None:
-                print("recorded", td_record)
-                rewards_eval.append(
-                    (
-                        i,
-                        td_record["total_r_evaluation"]
-                        / 1,  # divide by number of eval worker
-                    )
+        td_record = recorder(None)
+        if td_record is not None:
+            rewards_eval.append(
+                (
+                    i,
+                    td_record["total_r_evaluation"]
+                    / recorder.recorder.batch_size.numel(),  # divide by number of eval worker
                 )
-                logger.log_scalar(
-                    "test_reward", rewards_eval[-1][1], step=collected_frames
-                )
-                solved = float(td_record["success"].any())
-                logger.log_scalar(
-                    "success", solved, step=collected_frames
-                )
+            )
+            logger.log_scalar("test_reward", rewards_eval[-1][1], step=collected_frames)
+            solved = td_record["success"].any(-1).float().mean()
+            logger.log_scalar("success", solved, step=collected_frames)
 
         if len(rewards_eval):
             pbar.set_description(

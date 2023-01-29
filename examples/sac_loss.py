@@ -340,11 +340,13 @@ class SACLoss(LossModule):
         )
         return td_out
 
-    def _rsample(self, dist, ):
+    def _rsample(
+        self,
+        dist,
+    ):
         # separated only for the purpose of making the sampling
         # deterministic to compare methods
         return dist.rsample()
-
 
     def _sample_reparam(self, tensordict, params):
         """Given a policy param batch and input data in a tensordict, writes a reparam sample and log-prob key."""
@@ -352,7 +354,10 @@ class SACLoss(LossModule):
             if self.gSDE:
                 raise NotImplementedError
             # vmap doesn't support sampling, so we take it out from the vmap
-            td_params = self.actor_network.get_dist_params(tensordict, params,)
+            td_params = self.actor_network.get_dist_params(
+                tensordict,
+                params,
+            )
             if isinstance(self.actor_network, TensorDictSequential):
                 sample_key = self.actor_network[-1].out_keys[0]
                 tensordict_actor_dist = self.actor_network.build_dist_from_params(
@@ -375,24 +380,29 @@ class SACLoss(LossModule):
         tensordict_actor = self._sample_reparam(tensordict_actor, actor_params)
         action_log_prob_actor = tensordict_actor["sample_log_prob"]
 
-        tensordict_qval = (
-            tensordict_actor
-            .select(*self.qvalue_network.in_keys)
-            .expand(self.num_qvalue_nets, *tensordict_actor.batch_size)
+        tensordict_qval = tensordict_actor.select(*self.qvalue_network.in_keys).expand(
+            self.num_qvalue_nets, *tensordict_actor.batch_size
         )  # for actor loss
         qvalue_params = self.qvalue_network_params.detach()
-        tensordict_qval = vmap(self.qvalue_network)(tensordict_qval, qvalue_params,)
+        tensordict_qval = vmap(self.qvalue_network)(
+            tensordict_qval,
+            qvalue_params,
+        )
         state_action_value_actor = tensordict_qval.get("state_action_value").squeeze(-1)
         state_action_value_actor = state_action_value_actor.min(0)[0]
 
         # E[alpha * log_pi(a) - Q(s, a)] where a is reparameterized
-        loss_actor = (self.alpha * action_log_prob_actor - state_action_value_actor).mean()
+        loss_actor = (
+            self.alpha * action_log_prob_actor - state_action_value_actor
+        ).mean()
 
         return loss_actor, action_log_prob_actor
 
     def _loss_qval_explicit(self, tensordict):
         next_tensordict = step_mdp(tensordict)
-        next_tensordict = self._sample_reparam(next_tensordict, self.target_actor_network_params)
+        next_tensordict = self._sample_reparam(
+            next_tensordict, self.target_actor_network_params
+        )
         next_action_log_prob_qvalue = next_tensordict["sample_log_prob"]
         next_state_action_value_qvalue = vmap(self.qvalue_network, (None, 0))(
             next_tensordict,
@@ -429,22 +439,28 @@ class SACLoss(LossModule):
         td_error = (pred_val - target_value).pow(2)
         return loss_qval, td_error
 
+
 if __name__ == "__main__":
+    from tensordict.nn import TensorDictModule
+    from torch import nn
+    from torchrl.data import BoundedTensorSpec
+
     # Tests the vectorized version of SAC-v2 against plain implementation
     from torchrl.modules import ProbabilisticActor, ValueOperator
-    from torchrl.data import BoundedTensorSpec
-    from torch import nn
-    from tensordict.nn import TensorDictModule
     from torchrl.modules.distributions import TanhNormal
 
     torch.manual_seed(0)
 
     action_spec = BoundedTensorSpec(-1, 1, shape=(3,))
+
     class Splitter(nn.Linear):
         def forward(self, x):
             loc, scale = super().forward(x).chunk(2, -1)
             return loc, scale.exp()
-    actor_module = TensorDictModule(Splitter(6, 6), in_keys=["obs"], out_keys=["loc", "scale"])
+
+    actor_module = TensorDictModule(
+        Splitter(6, 6), in_keys=["obs"], out_keys=["loc", "scale"]
+    )
     actor = ProbabilisticActor(
         spec=action_spec,
         in_keys=["loc", "scale"],
@@ -453,22 +469,34 @@ if __name__ == "__main__":
         default_interaction_mode="random",
         return_log_prob=False,
     )
+
     class QVal(nn.Linear):
         def forward(self, s: Tensor, a: Tensor) -> Tensor:
             return super().forward(torch.cat([s, a], -1))
 
     qvalue = ValueOperator(QVal(9, 1), in_keys=["obs", "action"])
     _rsample_old = SACLoss._rsample
+
     def _rsample_new(self, dist):
         return torch.ones_like(_rsample_old(self, dist))
+
     SACLoss._rsample = _rsample_new
     loss = SACLoss(actor, qvalue)
 
     for batch in ((), (2, 3)):
-        td_input = TensorDict({"obs": torch.rand(*batch, 6), "action": torch.rand(*batch, 3).clamp(-1, 1), "next": {"obs": torch.rand(*batch, 6)}, "reward": torch.rand(*batch, 1), "done": torch.zeros(*batch, 1, dtype=torch.bool)}, batch)
+        td_input = TensorDict(
+            {
+                "obs": torch.rand(*batch, 6),
+                "action": torch.rand(*batch, 3).clamp(-1, 1),
+                "next": {"obs": torch.rand(*batch, 6)},
+                "reward": torch.rand(*batch, 1),
+                "done": torch.zeros(*batch, 1, dtype=torch.bool),
+            },
+            batch,
+        )
         loss._explicit = True
         loss0 = loss(td_input)
         loss._explicit = False
         loss1 = loss(td_input)
-        print("a", loss0["loss_actor"]-loss1["loss_actor"])
-        print("q", loss0["loss_qvalue"]-loss1["loss_qvalue"])
+        print("a", loss0["loss_actor"] - loss1["loss_actor"])
+        print("q", loss0["loss_qvalue"] - loss1["loss_qvalue"])
