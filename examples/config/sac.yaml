@@ -6,9 +6,9 @@ default:
 exp_name: ${task}_sac_${visual_transform}
 visual_transform: r3m
 record_interval: 100
-num_record_envs: 8
+num_record_envs: 1
 device: "cuda:0"
-device_collection: ["cuda:1","cuda:2","cuda:3","cuda:4","cuda:5","cuda:6","cuda:7"]
+device_collection: ["cuda:1","cuda:2","cuda:3",]
 wandb_entity: "RLHive"
 wandb_mode: "offline"
 

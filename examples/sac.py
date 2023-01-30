@@ -144,14 +144,14 @@ def make_recorder(
     )
     test_env.reset()
     recorder_obj = Recorder(
-        record_frames=100, # eval_traj * test_env.horizon,
+        record_frames=eval_traj * test_env.horizon,
         frame_skip=frame_skip,
         policy_exploration=actor_model_explore,
         recorder=test_env,
         exploration_mode="mean",
         record_interval=record_interval,
-        log_keys=["reward", "solved"],
-        out_keys={"reward": "r_evaluation", "solved": "success"},
+        log_keys=["reward", "solved", "done"],
+        out_keys={"reward": "r_evaluation", "solved": "success", "done": "done"},
     )
     return recorder_obj
 
@@ -248,14 +248,16 @@ def main(args: DictConfig):
     env_configs = {
         "reward_scaling": args.reward_scaling,
         "visual_transform": args.visual_transform,
-        "device": args.device,
+        "device": "cpu",
     }
     train_env = make_env(num_envs=args.num_envs, task=args.task, **env_configs)
+    # add forward pass for initialization with proof env
+    proof_env = make_env(num_envs=1, task=args.task, **env_configs)
 
     # Create Agent
     # Define Actor Network
     in_keys = ["observation_vector"]
-    action_spec = train_env.action_spec
+    action_spec = proof_env.action_spec
     actor_net_kwargs = {
         "num_cells": [256, 256],
         "out_features": 2 * action_spec.shape[-1],
@@ -312,8 +314,6 @@ def main(args: DictConfig):
 
     model = nn.ModuleList([actor, qvalue]).to(device)
 
-    # add forward pass for initialization with proof env
-    proof_env = make_env(num_envs=1, task=args.task, **env_configs)
     # init nets
     with torch.no_grad(), set_exploration_mode("random"):
         td = proof_env.reset()
@@ -400,7 +400,7 @@ def main(args: DictConfig):
     if isinstance(collector_device, str):
         collector_device = [collector_device]
     collector = MultiaSyncDataCollector(
-        create_env_fn=[train_env] * len(collector_device),
+        create_env_fn=[train_env.to(device) for device in collector_device],
         policy=actor_model_explore,
         total_frames=args.total_frames,
         max_frames_per_traj=args.frames_per_batch,
@@ -423,11 +423,11 @@ def main(args: DictConfig):
         pbar.update(batch.numel())
 
         # extend the replay buffer with the new data
-        batch = batch.view(-1)
+        batch = batch.cpu().view(-1)
         current_frames = batch.numel()
         collected_frames += current_frames
         episodes += batch["done"].sum()
-        replay_buffer.extend(batch.cpu())
+        replay_buffer.extend(batch)
 
         # optimization steps
         if collected_frames >= args.init_random_frames:
@@ -501,7 +501,7 @@ def main(args: DictConfig):
                 )
             )
             logger.log_scalar("test_reward", rewards_eval[-1][1], step=collected_frames)
-            solved = td_record["success"].any(-1).float().mean()
+            solved = td_record["success"].sum().float() / td_record["done"].sum()
             logger.log_scalar("success", solved, step=collected_frames)
 
         if len(rewards_eval):
