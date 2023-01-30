@@ -418,6 +418,7 @@ def main(args: DictConfig):
     )
 
     for i, batch in enumerate(collector):
+        collector.update_policy_weights_()
         if r0 is None:
             r0 = batch["reward"].sum(-1).mean().item()
         pbar.update(batch.numel())
@@ -509,7 +510,7 @@ def main(args: DictConfig):
                 f"reward: {rewards[-1][1]: 4.4f} (r0 = {r0: 4.4f}), test reward: {rewards_eval[-1][1]: 4.4f}, solved: {solved}"
             )
         del batch
-        gc.collect()
+        # gc.collect()
 
 
 if __name__ == "__main__":
