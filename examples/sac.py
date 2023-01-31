@@ -137,7 +137,7 @@ def make_transformed_env(
             )
         )  # Necessary to Compose R3MTransform with FlattenObservation; Track bug: https://github.com/pytorch/rl/issues/802
     elif not visual_transform:
-        pass
+        selected_keys = ["observation"]
     else:
         raise NotImplementedError(visual_transform)
     env.append_transform(RewardScaling(loc=0.0, scale=reward_scaling))

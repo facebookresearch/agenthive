@@ -161,7 +161,10 @@ class RoboHiveEnv(GymEnv):
                     pix = pix[None]
                 pixel_list.append(pix)
             elif key in self._env.obs_keys:
-                obsvec.append(observations[key])  # ravel helps with images
+                value = observations[key]
+                if not value.shape:
+                    value = value[None]
+                obsvec.append(value)  # ravel helps with images
         if obsvec:
             obsvec = np.concatenate(obsvec, 0)
         if self.from_pixels:
