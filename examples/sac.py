@@ -107,7 +107,7 @@ def make_transformed_env(
         selected_keys = ["observation", "r3m_vec"]
         env.append_transform(
             Compose(
-                R3MTransform("resnet50", in_keys=["pixels"], download=True),
+                R3MTransform("resnet50", in_keys=["pixels"], download=True).eval(),
                 FlattenObservation(-2, -1, in_keys=vec_keys),
             )
         )  # Necessary to Compose R3MTransform with FlattenObservation; Track bug: https://github.com/pytorch/rl/issues/802
@@ -250,7 +250,7 @@ def main(args: DictConfig):
         "visual_transform": args.visual_transform,
         "device": "cpu",
     }
-    train_env = make_env(num_envs=args.num_envs, task=args.task, **env_configs)
+    train_env = make_env(num_envs=args.env_per_collector, task=args.task, **env_configs)
     # add forward pass for initialization with proof env
     proof_env = make_env(num_envs=1, task=args.task, **env_configs)
 
@@ -312,7 +312,7 @@ def main(args: DictConfig):
         module=qvalue_net,
     )
 
-    model = nn.ModuleList([actor, qvalue]).to(device)
+    model = actor, qvalue = nn.ModuleList([actor, qvalue]).to(device)
 
     # init nets
     with torch.no_grad(), set_exploration_mode("random"):
@@ -322,8 +322,6 @@ def main(args: DictConfig):
             net(td)
     del td
     proof_env.close()
-
-    # actor_collection = deepcopy(actor).to(device_collection)
 
     actor_model_explore = model[0]
 
@@ -364,9 +362,6 @@ def main(args: DictConfig):
     r0 = None
     loss = None
 
-    total_frames = args.total_frames
-    frames_per_batch = args.frames_per_batch
-
     logger = WandbLogger(
         exp_name=args.task,
         project="SAC_TorchRL",
@@ -388,14 +383,6 @@ def main(args: DictConfig):
         num_envs=args.num_record_envs,
     )
 
-    # collector = dataloader(
-    #         total_frames,
-    #         frames_per_batch,
-    #         train_env,
-    #         actor,
-    #         actor_collection,
-    #         device_collection,
-    #     )
     collector_device = args.device_collection
     if isinstance(collector_device, str):
         collector_device = [collector_device]
@@ -404,7 +391,7 @@ def main(args: DictConfig):
         policy=actor_model_explore,
         total_frames=args.total_frames,
         max_frames_per_traj=args.frames_per_batch,
-        frames_per_batch=args.env_per_collector * args.frames_per_batch,
+        frames_per_batch=args.frames_per_batch,
         init_random_frames=args.init_random_frames,
         reset_at_each_iter=False,
         postproc=None,
@@ -458,6 +445,7 @@ def main(args: DictConfig):
                 loss = actor_loss + q_loss + alpha_loss
                 optimizer.zero_grad()
                 loss.backward()
+                gn = torch.nn.utils.clip_grad_norm_(params)
                 optimizer.step()
 
                 # update qnet_target params
@@ -478,6 +466,7 @@ def main(args: DictConfig):
         logger.log_scalar("train_reward", rewards[-1][1], step=collected_frames)
         logger.log_scalar("optim_steps", optim_steps, step=collected_frames)
         logger.log_scalar("episodes", episodes, step=collected_frames)
+        logger.log_scalar("grad_norm", gn, step=collected_frames)
 
         if loss is not None:
             logger.log_scalar(

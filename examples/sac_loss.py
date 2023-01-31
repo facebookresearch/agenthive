@@ -58,7 +58,7 @@ class SACLoss(LossModule):
     """
 
     delay_actor: bool = False
-    _explicit: bool = True
+    _explicit: bool = False
 
     def __init__(
         self,
