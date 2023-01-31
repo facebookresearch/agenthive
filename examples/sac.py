@@ -428,7 +428,7 @@ def main(args: DictConfig):
                 entropies,
             ) = ([], [], [], [], [], [])
             for _ in range(
-                args.frames_per_batch * args.utd_ratio // args.batch_size
+                max(1, args.frames_per_batch * args.utd_ratio // args.batch_size)
             ):
                 optim_steps += 1
                 # sample from replay buffer
@@ -445,7 +445,7 @@ def main(args: DictConfig):
                 loss = actor_loss + q_loss + alpha_loss
                 optimizer.zero_grad()
                 loss.backward()
-                gn = torch.nn.utils.clip_grad_norm_(params)
+                gn = torch.nn.utils.clip_grad_norm_(params, args.clip_norm)
                 optimizer.step()
 
                 # update qnet_target params
