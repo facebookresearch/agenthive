@@ -93,7 +93,6 @@ def traj_total_reward(done, reward):
     return count / (i+1)
 
 def make_env(num_envs, task, visual_transform, reward_scaling, device):
-    assert visual_transform in ("rrl", "r3m")
     if num_envs > 1:
         base_env = ParallelEnv(
             num_envs, EnvCreator(lambda: RoboHiveEnv(task, device=device))
@@ -264,7 +263,7 @@ def dataloader(
         yield batch
 
 
-@hydra.main(config_name="sac.yaml", config_path="config")
+@hydra.main(config_name="sac_mixed.yaml", config_path="config")
 def main(args: DictConfig):
     # customize device at will
     device = args.device
