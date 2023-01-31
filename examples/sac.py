@@ -453,7 +453,7 @@ def main(args: DictConfig):
 
                 # update priority
                 if args.prb:
-                    replay_buffer.update_priority(sampled_tensordict)
+                    replay_buffer.update_priority(sampled_tensordict, sampled_tensordict["td_error"])
 
                 total_losses.append(loss.item())
                 actor_losses.append(actor_loss.item())
