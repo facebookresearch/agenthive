@@ -15,6 +15,7 @@ import torch
 import torch.cuda
 import tqdm
 from omegaconf import DictConfig
+from torchvision.models import ResNet50_Weights
 from rlhive.rl_envs import RoboHiveEnv
 
 from sac_loss import SACLoss
@@ -35,7 +36,7 @@ from torchrl.envs import (
     SelectTransform,
     TransformedEnv,
 )
-from torchrl.envs.transforms import Compose, FlattenObservation, RewardScaling
+from torchrl.envs.transforms import Compose, FlattenObservation, RewardScaling, Resize, ToTensorImage
 from torchrl.envs.utils import set_exploration_mode, step_mdp
 from torchrl.modules import MLP, NormalParamWrapper, SafeModule
 from torchrl.modules.distributions import TanhNormal
@@ -44,7 +45,6 @@ from torchrl.modules.tensordict_module.actors import ProbabilisticActor, ValueOp
 from torchrl.objectives import SoftUpdate
 from torchrl.record.loggers import WandbLogger
 from torchrl.trainers import Recorder
-
 
 # ===========================================================================================
 # Env constructor
@@ -72,9 +72,20 @@ from torchrl.trainers import Recorder
 #  ...     ))
 #
 
+def is_visual_env(task):
+    return task.startswith("visual_")
+
+def evaluate_success(env_success_fn, td_record: dict, eval_traj: int):
+    td_record["success"] = td_record["success"].reshape((eval_traj, -1))
+    paths = []
+    for traj, solved_traj in zip(range(eval_traj), td_record["success"]):
+        path = {"env_infos": {"solved": solved_traj.data.cpu().numpy()}}
+        paths.append(path)
+    success_percentage = env_success_fn(paths)
+    return success_percentage
 
 def make_env(num_envs, task, visual_transform, reward_scaling, device):
-    assert visual_transform in ("rrl", "r3m")
+    assert visual_transform in ("rrl", "r3m", "flatten", "state")
     if num_envs > 1:
         base_env = ParallelEnv(num_envs, lambda: RoboHiveEnv(task, device=device))
     else:
@@ -94,21 +105,46 @@ def make_transformed_env(
     """
     Apply transforms to the env (such as reward scaling and state normalization)
     """
-    env = TransformedEnv(
-        env,
-        SelectTransform("solved", "pixels", "observation", "rwd_dense", "rwd_sparse"),
-    )
-    if visual_transform == "r3m":
-        vec_keys = ["r3m_vec"]
-        selected_keys = ["observation", "r3m_vec"]
-        env.append_transform(
-            Compose(
-                R3MTransform("resnet50", in_keys=["pixels"], download=True),
-                FlattenObservation(-2, -1, in_keys=vec_keys),
+    if visual_transform != "state":
+        env = TransformedEnv(
+            env,
+            SelectTransform("solved", "pixels", "observation", "rwd_dense", "rwd_sparse"),
+        )
+        if visual_transform == "r3m":
+            vec_keys = ["r3m_vec"]
+            selected_keys = ["observation", "r3m_vec"]
+            env.append_transform(
+                Compose(
+                    R3MTransform("resnet50", in_keys=["pixels"], download=True),
+                    FlattenObservation(-2, -1, in_keys=vec_keys),
+                )
+            )  # Necessary to Compose R3MTransform with FlattenObservation; Track bug: https://github.com/pytorch/rl/issues/802
+        elif visual_transform == "rrl":
+            vec_keys = ["r3m_vec"]
+            selected_keys = ["observation", "r3m_vec"]
+            env.append_transform(
+                Compose(
+                    R3MTransform("resnet50", in_keys=["pixels"], download=ResNet50_Weights.IMAGENET1K_V2),
+                    FlattenObservation(-2, -1, in_keys=vec_keys),
+                )
+            )  # Necessary to Compose R3MTransform with FlattenObservation; Track bug: https://github.com/pytorch/rl/issues/802
+        elif visual_transform == "flatten":
+            vec_keys = ["pixels"]
+            out_keys = ["pixels"]
+            selected_keys = ["observation", "pixels"]
+            env.append_transform(
+                Compose(
+                    ToTensorImage(),
+                    Resize(64, 64, in_keys=vec_keys, out_keys=out_keys), ## TODO: Why is resize not working?
+                    FlattenObservation(-4, -1, in_keys=out_keys),
+                )
             )
-        )  # Necessary to Compose R3MTransform with FlattenObservation; Track bug: https://github.com/pytorch/rl/issues/802
+        else:
+            raise NotImplementedError
     else:
-        raise NotImplementedError
+        env = TransformedEnv(env, SelectTransform("solved", "observation", "rwd_dense", "rwd_sparse"))
+        selected_keys = ["observation"]
+
     env.append_transform(RewardScaling(loc=0.0, scale=reward_scaling))
     out_key = "observation_vector"
     env.append_transform(CatTensors(in_keys=selected_keys, out_key=out_key))
@@ -126,7 +162,7 @@ def make_transformed_env(
 
 def make_recorder(
     task: str,
-    frame_skip: int,
+    #frame_skip: int,
     record_interval: int,
     actor_model_explore: object,
     eval_traj: int,
@@ -134,18 +170,20 @@ def make_recorder(
     wandb_logger: WandbLogger,
 ):
     test_env = make_env(num_envs=1, task=task, **env_configs)
-    test_env.insert_transform(
-        0, VideoRecorder(wandb_logger, "test", in_keys=["pixels"])
-    )
+    if is_visual_env(task):## TODO(Rutav): Change this behavior. Record only when using visual env
+        test_env.insert_transform(
+            0, VideoRecorder(wandb_logger, "test", in_keys=["pixels"])
+        )
     recorder_obj = Recorder(
         record_frames=eval_traj * test_env.horizon,
-        frame_skip=frame_skip,
+        #frame_skip=frame_skip, ## To maintain consistency and using default env frame_skip values
+        frame_skip=1, ## To maintain consistency and using default env frame_skip values
         policy_exploration=actor_model_explore,
         recorder=test_env,
         exploration_mode="mean",
         record_interval=record_interval,
-        log_keys=["reward", "solved"],
-        out_keys={"reward": "r_evaluation", "solved": "success"},
+        log_keys=["reward", "solved",  "rwd_dense", "rwd_sparse"],
+        out_keys={"reward": "r_evaluation", "solved": "success", "rwd_dense": "rwd_dense", "rwd_sparse": "rwd_sparse"},
     )
     return recorder_obj
 
@@ -218,6 +256,7 @@ def dataloader(
 
 @hydra.main(config_name="sac.yaml", config_path="config")
 def main(args: DictConfig):
+    assert ((args.visual_transform == "state")^is_visual_env(args.task)), "Please use visual_transform=state if using state environment; else use visual_transform=r3m,rrl"
     # customize device at will
     device = args.device
     device_collection = args.device_collection
@@ -334,6 +373,7 @@ def main(args: DictConfig):
 
     rewards = []
     rewards_eval = []
+    success_percentage_hist = []
 
     # Main loop
     target_net_updater.init_()
@@ -360,7 +400,7 @@ def main(args: DictConfig):
     # Trajectory recorder for evaluation
     recorder = make_recorder(
         task=args.task,
-        frame_skip=args.frame_skip,
+        #frame_skip=args.frame_skip,
         record_interval=args.record_interval,
         actor_model_explore=actor_model_explore,
         eval_traj=args.eval_traj,
@@ -407,9 +447,10 @@ def main(args: DictConfig):
                 sampled_tensordict = replay_buffer.sample(args.batch_size).clone()
 
                 loss_td = loss_module(sampled_tensordict)
-                print(f'value: {loss_td["state_action_value_actor"].mean():4.4f}')
-                print(f'log_prob: {loss_td["action_log_prob_actor"].mean():4.4f}')
-                print(f'next.state_value: {loss_td["state_value"].mean():4.4f}')
+                ## Not returned in explicit forward loss
+                #print(f'value: {loss_td["state_action_value_actor"].mean():4.4f}')
+                #print(f'log_prob: {loss_td["action_log_prob_actor"].mean():4.4f}')
+                #print(f'next.state_value: {loss_td["state_value"].mean():4.4f}')
 
                 actor_loss = loss_td["loss_actor"]
                 q_loss = loss_td["loss_qvalue"]
@@ -454,13 +495,7 @@ def main(args: DictConfig):
             logger.log_scalar("entropy", np.mean(entropies), step=collected_frames)
         if i % args.eval_interval == 0:
             td_record = recorder(None)
-            # success_percentage = evaluate_success(
-            #     env_success_fn=train_env.evaluate_success,
-            #     td_record=td_record,
-            #     eval_traj=args.eval_traj,
-            # )
             if td_record is not None:
-                print("recorded", td_record)
                 rewards_eval.append(
                     (
                         i,
@@ -471,14 +506,26 @@ def main(args: DictConfig):
                 logger.log_scalar(
                     "test_reward", rewards_eval[-1][1], step=collected_frames
                 )
-                solved = float(td_record["success"].any())
                 logger.log_scalar(
-                    "success", solved, step=collected_frames
+                    "reward_sparse", td_record["rwd_sparse"].sum()/args.eval_traj, step=collected_frames
+                )
+                logger.log_scalar(
+                    "reward_dense", td_record["rwd_dense"].sum()/args.eval_traj, step=collected_frames
+                )
+                success_percentage = evaluate_success(
+                    env_success_fn=train_env.evaluate_success,
+                    td_record=td_record,
+                    eval_traj=args.eval_traj,
+                )
+                success_percentage_hist.append(success_percentage)
+                #solved = float(td_record["success"].any())
+                logger.log_scalar(
+                    "success_rate", success_percentage, step=collected_frames
                 )
 
         if len(rewards_eval):
             pbar.set_description(
-                f"reward: {rewards[-1][1]: 4.4f} (r0 = {r0: 4.4f}), test reward: {rewards_eval[-1][1]: 4.4f}, solved: {solved}"
+                f"reward: {rewards[-1][1]: 4.4f} (r0 = {r0: 4.4f}), test reward: {rewards_eval[-1][1]: 4.4f}, Success: {success_percentage_hist[-1]}"
             )
         del batch
         gc.collect()
