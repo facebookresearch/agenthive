@@ -428,7 +428,7 @@ def main(args: DictConfig):
                 entropies,
             ) = ([], [], [], [], [], [])
             for _ in range(
-                args.env_per_collector * args.frames_per_batch * args.utd_ratio // args.batch_size
+                args.frames_per_batch * args.utd_ratio // args.batch_size
             ):
                 optim_steps += 1
                 # sample from replay buffer
