@@ -5,15 +5,15 @@ default:
 # Logger
 exp_name: ${task}_sac_${visual_transform}
 visual_transform: r3m
-record_interval: 100
-num_record_envs: 1
+record_interval: 100  # every 100 data collection we evaluate
+num_record_envs: 4
 device: "cuda:0"
-device_collection: ["cuda:1","cuda:2","cuda:3",]
+device_collection: ["cuda:1","cuda:1"]
 wandb_entity: "RLHive"
 wandb_mode: "offline"
 
 # Environment
-task: visual_franka_slide_random-v3
+task: visual_franka_slide_close-v3
 frame_skip: 1
 reward_scaling: 5.0
 init_env_steps: 1000

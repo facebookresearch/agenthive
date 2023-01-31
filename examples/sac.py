@@ -74,6 +74,23 @@ from torchrl.trainers import Recorder
 #  ...     ))
 #
 
+def traj_is_solved(done, solved):
+    solved = solved.view_as(done)
+    done_cumsum = done.cumsum(-2)
+    count = 0
+    i = 0
+    for i, u in enumerate(done_cumsum.unique()):
+        is_solved = solved[done_cumsum == u].any()
+        count += is_solved
+    return count / (i+1)
+def traj_total_reward(done, reward):
+    reward = reward.view_as(done)
+    done_cumsum = done.cumsum(-2)
+    count = 0
+    i = 0
+    for i, u in enumerate(done_cumsum.unique()):
+        count += reward[done_cumsum == u].sum()
+    return count / (i+1)
 
 def make_env(num_envs, task, visual_transform, reward_scaling, device):
     assert visual_transform in ("rrl", "r3m")
@@ -111,8 +128,19 @@ def make_transformed_env(
                 FlattenObservation(-2, -1, in_keys=vec_keys),
             )
         )  # Necessary to Compose R3MTransform with FlattenObservation; Track bug: https://github.com/pytorch/rl/issues/802
+    elif visual_transform == "rrl":
+        vec_keys = ["r3m_vec"]
+        selected_keys = ["observation", "r3m_vec"]
+        env.append_transform(
+            Compose(
+                R3MTransform("resnet50", in_keys=["pixels"], download="IMAGENET1K_V2").eval(),
+                FlattenObservation(-2, -1, in_keys=vec_keys),
+            )
+        )  # Necessary to Compose R3MTransform with FlattenObservation; Track bug: https://github.com/pytorch/rl/issues/802
+    elif not visual_transform:
+        pass
     else:
-        raise NotImplementedError
+        raise NotImplementedError(visual_transform)
     env.append_transform(RewardScaling(loc=0.0, scale=reward_scaling))
     out_key = "observation_vector"
     env.append_transform(CatTensors(in_keys=selected_keys, out_key=out_key))
@@ -240,7 +268,6 @@ def dataloader(
 def main(args: DictConfig):
     # customize device at will
     device = args.device
-    device_collection = args.device_collection
     torch.manual_seed(args.seed)
     np.random.seed(args.seed)
 
@@ -398,7 +425,7 @@ def main(args: DictConfig):
         split_trajs=False,
         devices=collector_device,  # device for execution
         passing_devices=collector_device,  # device where data will be stored and passed
-        seed=None,
+        seed=args.seed,
         pin_memory=False,
         update_at_each_batch=False,
         exploration_mode="random",
@@ -447,7 +474,6 @@ def main(args: DictConfig):
                 loss.backward()
                 gn = torch.nn.utils.clip_grad_norm_(params, args.clip_norm)
                 optimizer.step()
-
                 # update qnet_target params
                 target_net_updater.step()
 
@@ -486,7 +512,7 @@ def main(args: DictConfig):
             rewards_eval.append(
                 (
                     i,
-                    td_record["total_r_evaluation"]
+                    td_record["r_evaluation"]
                     / recorder.recorder.batch_size.numel(),  # divide by number of eval worker
                 )
             )
