@@ -466,7 +466,6 @@ def main(args: DictConfig):
         logger.log_scalar("train_reward", rewards[-1][1], step=collected_frames)
         logger.log_scalar("optim_steps", optim_steps, step=collected_frames)
         logger.log_scalar("episodes", episodes, step=collected_frames)
-        logger.log_scalar("grad_norm", gn, step=collected_frames)
 
         if loss is not None:
             logger.log_scalar(
@@ -481,6 +480,7 @@ def main(args: DictConfig):
             )
             logger.log_scalar("alpha", np.mean(alphas), step=collected_frames)
             logger.log_scalar("entropy", np.mean(entropies), step=collected_frames)
+            logger.log_scalar("grad_norm", gn, step=collected_frames)
         td_record = recorder(None)
         if td_record is not None:
             rewards_eval.append(
