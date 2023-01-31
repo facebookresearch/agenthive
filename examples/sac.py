@@ -166,9 +166,10 @@ def make_recorder(
     num_envs: int,
 ):
     test_env = make_env(num_envs=num_envs, task=task, **env_configs)
-    test_env.insert_transform(
-        0, VideoRecorder(wandb_logger, "test", in_keys=["pixels"])
-    )
+    if "visual" in task:
+        test_env.insert_transform(
+            0, VideoRecorder(wandb_logger, "test", in_keys=["pixels"])
+        )
     test_env.reset()
     recorder_obj = Recorder(
         record_frames=eval_traj * test_env.horizon,
