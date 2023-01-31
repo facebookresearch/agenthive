@@ -6,7 +6,7 @@ default:
 exp_name: ${task}_sac_${visual_transform}
 visual_transform:
 record_interval: 100  # every 100 data collection we evaluate
-num_record_envs: 4
+num_record_envs: 1
 device: "cuda:0"
 device_collection: ["cuda:1","cuda:1"]
 wandb_entity: "RLHive"
