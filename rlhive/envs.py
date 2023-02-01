@@ -84,7 +84,7 @@ def register_kitchen_envs():
     for env in env_list:
         try:
             new_env_name = "visual_" + env
-            mj_envs.envs.env_variants.register_env_variant(
+            register_env_variant(
                 env,
                 variants={"obs_keys_wt": visual_obs_keys_wt},
                 variant_id=new_env_name,
@@ -117,7 +117,7 @@ def register_franka_envs():
     for env in env_list:
         try:
             new_env_name = "visual_" + env
-            mj_envs.envs.env_variants.register_env_variant(
+            register_env_variant(
                 env,
                 variants={"obs_keys_wt": visual_obs_keys_wt},
                 variant_id=new_env_name,
@@ -134,16 +134,10 @@ def register_hand_envs():
     env_list = ["door-v1", "hammer-v1", "pen-v1", "relocate-v1"]
 
     # Hand Manipulation Suite ======================================================================
-    visual_obs_keys_wt = {
-        "hand_jnt": 1.0,
-        "rgb:vil_camera:224x224:2d": 1.0,
-        "rgb:fixed:224x224:2d": 1.0,
-    }
-
     for env in env_list:
         try:
             new_env_name = "visual_" + env
-            mj_envs.envs.env_variants.register_env_variant(
+            register_env_variant(
                 env,
                 variants={
                     "obs_keys": [

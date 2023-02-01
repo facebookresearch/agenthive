@@ -1,21 +1,15 @@
 import torch
 from rlhive.rl_envs import RoboHiveEnv
 from rlhive.sim_algos.helpers.rrl_transform import RRLTransform
-from torchrl.envs.transforms import (
-    Compose,
-    FlattenObservation,
-    RewardScaling,
-    TransformedEnv,
-)
 from torchrl.envs import (
     CatTensors,
     DoubleToFloat,
-    EnvCreator,
     ObservationNorm,
     R3MTransform,
     SelectTransform,
     TransformedEnv,
 )
+from torchrl.envs.transforms import Compose, FlattenObservation, RewardScaling
 from torchrl.envs.utils import set_exploration_mode
 
 

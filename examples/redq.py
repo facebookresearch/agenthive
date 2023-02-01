@@ -15,8 +15,6 @@ import tqdm
 from omegaconf import DictConfig
 from rlhive.rl_envs import RoboHiveEnv
 
-from sac_loss import SACLoss
-
 from tensordict import TensorDict
 
 from torch import nn, optim
@@ -40,6 +38,8 @@ from torchrl.modules.distributions import TanhNormal
 
 from torchrl.modules.tensordict_module.actors import ProbabilisticActor, ValueOperator
 from torchrl.objectives import SoftUpdate
+
+from torchrl.objectives.deprecated import REDQLoss_deprecated as REDQLoss
 from torchrl.record.loggers import WandbLogger
 from torchrl.trainers import Recorder
 
@@ -266,7 +266,7 @@ def dataloader(
         yield batch
 
 
-@hydra.main(config_name="sac_mixed.yaml", config_path="config")
+@hydra.main(config_name="redq_mixed.yaml", config_path="config")
 def main(args: DictConfig):
     # customize device at will
     device = args.device
@@ -354,11 +354,10 @@ def main(args: DictConfig):
 
     actor_model_explore = model[0]
 
-    # Create SAC loss
-    loss_module = SACLoss(
+    # Create REDQ loss
+    loss_module = REDQLoss(
         actor_network=model[0],
         qvalue_network=model[1],
-        num_qvalue_nets=2,
         gamma=args.gamma,
         loss_function="smooth_l1",
     )
@@ -393,7 +392,7 @@ def main(args: DictConfig):
 
     logger = WandbLogger(
         exp_name=args.task,
-        project="SAC_TorchRL",
+        project="REDQ_TorchRL",
         name=args.exp_name,
         config=args,
         entity=args.wandb_entity,

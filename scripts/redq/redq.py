@@ -4,20 +4,11 @@
 # LICENSE file in the root directory of this source tree.
 
 import dataclasses
-import uuid
-from datetime import datetime
 
 import hydra
 import torch.cuda
 from hydra.core.config_store import ConfigStore
 from rlhive.rl_envs import RoboHiveEnv
-from torchrl.envs import EnvCreator, ParallelEnv
-from torchrl.envs.transforms import (
-    Compose,
-    FlattenObservation,
-    RewardScaling,
-    TransformedEnv,
-)
 
 from torchrl.envs import (
     CatTensors,
@@ -29,6 +20,7 @@ from torchrl.envs import (
     SelectTransform,
     TransformedEnv,
 )
+from torchrl.envs.transforms import Compose, FlattenObservation, RewardScaling
 from torchrl.envs.utils import set_exploration_mode
 from torchrl.modules import OrnsteinUhlenbeckProcessWrapper
 from torchrl.record import VideoRecorder
@@ -37,12 +29,9 @@ from torchrl.trainers.helpers.collectors import (
     OffPolicyCollectorConfig,
 )
 from torchrl.trainers.helpers.envs import (
-    correct_for_frame_skip,
     EnvConfig,
     initialize_observation_norm_transforms,
-    parallel_env_constructor,
     retrieve_observation_norms_state_dict,
-    # transformed_env_constructor,
 )
 from torchrl.trainers.helpers.logger import LoggerConfig
 from torchrl.trainers.helpers.losses import LossConfig, make_redq_loss
@@ -63,13 +52,13 @@ def make_env(
     base_env = RoboHiveEnv(task, device=device)
     env = make_transformed_env(env=base_env, reward_scaling=reward_scaling)
 
-    if not obs_norm_state_dict is None:
+    if obs_norm_state_dict is not None:
         obs_norm = ObservationNorm(
             **obs_norm_state_dict, in_keys=["observation_vector"]
         )
         env.append_transform(obs_norm)
 
-    if not action_dim_gsde is None:
+    if action_dim_gsde is not None:
         env.append_transform(
             gSDENoise(action_dim=action_dim_gsde, state_dim=state_dim_gsde)
         )
@@ -149,17 +138,13 @@ def main(cfg: "DictConfig"):  # noqa: F821
     logger = get_logger(
         logger_type=cfg.logger, logger_name="redq_logging", experiment_name=exp_name
     )
-    video_tag = exp_name if cfg.record_video else ""
 
-    key, init_env_steps, stats = None, None, None
+    key, init_env_steps = None, None
     if not cfg.vecnorm and cfg.norm_stats:
         if not hasattr(cfg, "init_env_steps"):
             raise AttributeError("init_env_steps missing from arguments.")
         key = ("next", "observation_vector")
         init_env_steps = cfg.init_env_steps
-        stats = {"loc": None, "scale": None}
-    elif cfg.from_pixels:
-        stats = {"loc": 0.5, "scale": 0.5}
 
     proof_env = make_env(
         task=cfg.env_name,
@@ -204,7 +189,7 @@ def main(cfg: "DictConfig"):  # noqa: F821
         action_dim_gsde, state_dim_gsde = None, None
 
     proof_env.close()
-    create_env_fn = make_env(  ## Pass EnvBase instead of the create_env_fn
+    create_env_fn = make_env(  # Pass EnvBase instead of the create_env_fn
         task=cfg.env_name,
         reward_scaling=cfg.reward_scaling,
         device=device,

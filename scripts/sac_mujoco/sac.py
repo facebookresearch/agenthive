@@ -1,10 +1,11 @@
-# Make all the necessary imports for training
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+#
+# This source code is licensed under the MIT license found in the
+# LICENSE file in the root directory of this source tree.
 
 
-import argparse
 import gc
 import os
-from typing import Optional
 
 import hydra
 
@@ -13,8 +14,7 @@ import torch
 import torch.cuda
 import tqdm
 import wandb
-import yaml
-from omegaconf import DictConfig, OmegaConf, open_dict
+from omegaconf import DictConfig
 from rlhive.rl_envs import RoboHiveEnv
 from rlhive.sim_algos.helpers.rrl_transform import RRLTransform
 
@@ -23,28 +23,20 @@ from sac_loss import SACLoss
 
 from torch import nn, optim
 from torchrl.collectors import MultiaSyncDataCollector
-from torchrl.collectors.collectors import RandomPolicy
 from torchrl.data import TensorDictPrioritizedReplayBuffer, TensorDictReplayBuffer
 
 from torchrl.data.replay_buffers.storages import LazyMemmapStorage
 from torchrl.envs import (
     CatTensors,
     DoubleToFloat,
-    EnvCreator,
     ObservationNorm,
-    ParallelEnv,
-)
-from torchrl.envs.libs.dm_control import DMControlEnv
-from torchrl.envs.libs.gym import GymEnv
-from torchrl.envs.transforms import (
-    Compose,
-    FlattenObservation,
-    RewardScaling,
+    R3MTransform,
+    SelectTransform,
     TransformedEnv,
 )
-from torchrl.envs import ParallelEnv, R3MTransform, SelectTransform, TransformedEnv
+from torchrl.envs.transforms import Compose, FlattenObservation, RewardScaling
 from torchrl.envs.utils import set_exploration_mode
-from torchrl.modules import MLP, NormalParamWrapper, ProbabilisticActor, SafeModule
+from torchrl.modules import MLP, NormalParamWrapper, SafeModule
 from torchrl.modules.distributions import TanhNormal
 
 from torchrl.modules.tensordict_module.actors import ProbabilisticActor, ValueOperator
@@ -52,14 +44,17 @@ from torchrl.modules.tensordict_module.actors import ProbabilisticActor, ValueOp
 from torchrl.objectives import SoftUpdate
 from torchrl.trainers import Recorder
 
-os.environ["WANDB_MODE"] = "offline"  ## offline sync. TODO: Remove this behavior
+os.environ["WANDB_MODE"] = "offline"  # offline sync. TODO: Remove this behavior
 
 
-def make_env(task, visual_transform, reward_scaling, device):
+def make_env(task, visual_transform, reward_scaling, device, from_pixels):
     assert visual_transform in ("rrl", "r3m")
     base_env = RoboHiveEnv(task, device=device)
     env = make_transformed_env(
-        env=base_env, reward_scaling=reward_scaling, visual_transform=visual_transform
+        env=base_env,
+        reward_scaling=reward_scaling,
+        visual_transform=visual_transform,
+        from_pixels=from_pixels,
     )
     print(env)
 
@@ -68,6 +63,7 @@ def make_env(task, visual_transform, reward_scaling, device):
 
 def make_transformed_env(
     env,
+    from_pixels,
     reward_scaling=5.0,
     visual_transform="r3m",
     stats=None,
@@ -75,27 +71,31 @@ def make_transformed_env(
     """
     Apply transforms to the env (such as reward scaling and state normalization)
     """
-    env = TransformedEnv(env, SelectTransform("solved", "pixels", "observation"))
-    if visual_transform == "rrl":
-        vec_keys = ["rrl_vec"]
-        selected_keys = ["observation", "rrl_vec"]
-        env.append_transform(
-            Compose(
-                RRLTransform("resnet50", in_keys=["pixels"], download=True),
-                FlattenObservation(-2, -1, in_keys=vec_keys),
-            )
-        )  # Necessary to Compose R3MTransform with FlattenObservation; Track bug: https://github.com/pytorch/rl/issues/802
-    elif visual_transform == "r3m":
-        vec_keys = ["r3m_vec"]
-        selected_keys = ["observation", "r3m_vec"]
-        env.append_transform(
-            Compose(
-                R3MTransform("resnet50", in_keys=["pixels"], download=True),
-                FlattenObservation(-2, -1, in_keys=vec_keys),
-            )
-        )  # Necessary to Compose R3MTransform with FlattenObservation; Track bug: https://github.com/pytorch/rl/issues/802
+    if from_pixels:
+        env = TransformedEnv(env, SelectTransform("solved", "pixels", "observation"))
+        if visual_transform == "rrl":
+            vec_keys = ["rrl_vec"]
+            selected_keys = ["observation", "rrl_vec"]
+            env.append_transform(
+                Compose(
+                    RRLTransform("resnet50", in_keys=["pixels"], download=True),
+                    FlattenObservation(-2, -1, in_keys=vec_keys),
+                )
+            )  # Necessary to Compose R3MTransform with FlattenObservation; Track bug: https://github.com/pytorch/rl/issues/802
+        elif visual_transform == "r3m":
+            vec_keys = ["r3m_vec"]
+            selected_keys = ["observation", "r3m_vec"]
+            env.append_transform(
+                Compose(
+                    R3MTransform("resnet50", in_keys=["pixels"], download=True),
+                    FlattenObservation(-2, -1, in_keys=vec_keys),
+                )
+            )  # Necessary to Compose R3MTransform with FlattenObservation; Track bug: https://github.com/pytorch/rl/issues/802
+        else:
+            raise NotImplementedError
     else:
-        raise NotImplementedError
+        env = TransformedEnv(env, SelectTransform("solved", "observation"))
+        selected_keys = ["observation"]
     env.append_transform(RewardScaling(loc=0.0, scale=reward_scaling))
     out_key = "observation_vector"
     env.append_transform(CatTensors(in_keys=selected_keys, out_key=out_key))
@@ -169,7 +169,7 @@ def make_replay_buffer(
 def evaluate_success(env_success_fn, td_record: dict, eval_traj: int):
     td_record["success"] = td_record["success"].reshape((eval_traj, -1))
     paths = []
-    for traj, solved_traj in zip(range(eval_traj), td_record["success"]):
+    for solved_traj in td_record["success"]:
         path = {"env_infos": {"solved": solved_traj.data.cpu().numpy()}}
         paths.append(path)
     success_percentage = env_success_fn(paths)
@@ -193,6 +193,7 @@ def main(args: DictConfig):
         "reward_scaling": args.reward_scaling,
         "visual_transform": args.visual_transform,
         "device": args.device,
+        "from_pixels": args.from_pixels,
     }
     train_env = make_env(task=args.task, **env_configs)
 
@@ -322,7 +323,7 @@ def main(args: DictConfig):
     )
 
     # Optimizers
-    params = list(loss_module.parameters()) + list([loss_module.log_alpha])
+    params = list(loss_module.parameters()) + [loss_module.log_alpha]
     optimizer_actor = optim.Adam(params, lr=args.lr, weight_decay=args.weight_decay)
 
     rewards = []
