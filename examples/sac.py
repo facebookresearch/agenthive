@@ -180,8 +180,13 @@ def make_recorder(
         recorder=test_env,
         exploration_mode="mean",
         record_interval=record_interval,
-        log_keys=["reward", "solved", "done"],
-        out_keys={"reward": "r_evaluation", "solved": "success", "done": "done"},
+        log_keys=["reward", "solved", "done", "rwd_sparse"],
+        out_keys={
+            "reward": "r_evaluation",
+            "solved": "success",
+            "done": "done",
+            "rwd_sparse": "rwd_sparse",
+        },
     )
     return recorder_obj
 
@@ -521,6 +526,8 @@ def main(args: DictConfig):
             logger.log_scalar("test_reward", rewards_eval[-1][1], step=collected_frames)
             solved = traj_is_solved(td_record["done"], td_record["success"])
             logger.log_scalar("success", solved, step=collected_frames)
+            rwd_sparse = traj_total_reward(td_record["done"], td_record["rwd_sparse"])
+            logger.log_scalar("rwd_sparse", rwd_sparse, step=collected_frames)
 
         if len(rewards_eval):
             pbar.set_description(
