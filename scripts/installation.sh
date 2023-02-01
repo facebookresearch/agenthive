@@ -10,5 +10,5 @@ cd $here
 
 python3 -mpip install git+https://github.com/pytorch-labs/tensordict  # or stable or nightly with pip install tensordict(-nightly)
 python3 -mpip install git+https://github.com/pytorch/rl.git  # or stable or nightly with pip install torchrl(-nightly)
-pip install wandb
+pip install wandb moviepy
 pip install hydra-submitit-launcher --upgrade

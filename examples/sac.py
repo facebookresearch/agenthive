@@ -74,6 +74,7 @@ from torchrl.trainers import Recorder
 #  ...     ))
 #
 
+
 def traj_is_solved(done, solved):
     solved = solved.view_as(done)
     done_cumsum = done.cumsum(-2)
@@ -82,7 +83,9 @@ def traj_is_solved(done, solved):
     for i, u in enumerate(done_cumsum.unique()):
         is_solved = solved[done_cumsum == u].any()
         count += is_solved
-    return count / (i+1)
+    return count / (i + 1)
+
+
 def traj_total_reward(done, reward):
     reward = reward.view_as(done)
     done_cumsum = done.cumsum(-2)
@@ -90,7 +93,8 @@ def traj_total_reward(done, reward):
     i = 0
     for i, u in enumerate(done_cumsum.unique()):
         count += reward[done_cumsum == u].sum()
-    return count / (i+1)
+    return count / (i + 1)
+
 
 def make_env(num_envs, task, visual_transform, reward_scaling, device):
     if num_envs > 1:
@@ -132,7 +136,9 @@ def make_transformed_env(
         selected_keys = ["observation", "r3m_vec"]
         env.append_transform(
             Compose(
-                R3MTransform("resnet50", in_keys=["pixels"], download="IMAGENET1K_V2").eval(),
+                R3MTransform(
+                    "resnet50", in_keys=["pixels"], download="IMAGENET1K_V2"
+                ).eval(),
                 FlattenObservation(-2, -1, in_keys=vec_keys),
             )
         )  # Necessary to Compose R3MTransform with FlattenObservation; Track bug: https://github.com/pytorch/rl/issues/802
@@ -517,7 +523,7 @@ def main(args: DictConfig):
                 )
             )
             logger.log_scalar("test_reward", rewards_eval[-1][1], step=collected_frames)
-            solved = td_record["success"].sum().float() / td_record["done"].sum()
+            solved = traj_is_solved(td_record["done"], td_record["success"])
             logger.log_scalar("success", solved, step=collected_frames)
 
         if len(rewards_eval):
