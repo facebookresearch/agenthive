@@ -48,6 +48,23 @@ RANDOM_ENTRY_POINT = mj_envs.envs.multi_task.substeps1.RANDOM_ENTRY_POINT
 FIXED_ENTRY_POINT = mj_envs.envs.multi_task.substeps1.FIXED_ENTRY_POINT
 ENTRY_POINT = RANDOM_ENTRY_POINT
 
+override_keys = [
+    "objs_jnt",
+    "end_effector",
+    "knob1_site_err",
+    "knob2_site_err",
+    "knob3_site_err",
+    "knob4_site_err",
+    "light_site_err",
+    "slide_site_err",
+    "leftdoor_site_err",
+    "rightdoor_site_err",
+    "microhandle_site_err",
+    "kettle_site0_err",
+    "rgb:right_cam:224x224:2d",
+    "rgb:left_cam:224x224:2d",
+]
+
 
 @set_directory(CURR_DIR)
 def register_kitchen_envs():
@@ -88,6 +105,7 @@ def register_kitchen_envs():
                 env,
                 variants={"obs_keys_wt": visual_obs_keys_wt},
                 variant_id=new_env_name,
+                override_keys=override_keys,
             )
         except AssertionError as err:
             warnings.warn(
@@ -121,6 +139,7 @@ def register_franka_envs():
                 env,
                 variants={"obs_keys_wt": visual_obs_keys_wt},
                 variant_id=new_env_name,
+                override_keys=override_keys,
             )
         except AssertionError as err:
             warnings.warn(
