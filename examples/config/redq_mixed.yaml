@@ -11,6 +11,7 @@ device: "cuda:0"
 device_collection: ["cuda:1","cuda:1"]
 wandb_entity: "RLHive"
 wandb_mode: "offline"
+wandb_project: "REDQ_TorchRL"
 
 # Environment
 task: visual_franka_slide_close-v3

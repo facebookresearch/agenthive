@@ -397,7 +397,7 @@ def main(args: DictConfig):
 
     logger = WandbLogger(
         exp_name=args.task,
-        project="REDQ_TorchRL",
+        project=args.wandb_project,
         name=args.exp_name,
         config=args,
         entity=args.wandb_entity,
