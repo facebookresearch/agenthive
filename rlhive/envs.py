@@ -149,8 +149,34 @@ def register_franka_envs():
 
 @set_directory(CURR_DIR)
 def register_hand_envs():
-    print("RLHive:> Registering Franka Envs")
+    print("RLHive:> Registering Arm Envs")
     env_list = ["door-v1", "hammer-v1", "pen-v1", "relocate-v1"]
+
+    # Hand Manipulation Suite ======================================================================
+    for env in env_list:
+        try:
+            new_env_name = "visual_" + env
+            register_env_variant(
+                env,
+                variants={
+                    "obs_keys": [
+                        "hand_jnt",
+                        "rgb:vil_camera:224x224:2d",
+                        "rgb:fixed:224x224:2d",
+                    ]
+                },
+                variant_id=new_env_name,
+            )
+        except AssertionError as err:
+            warnings.warn(
+                f"Could not register {new_env_name}, the following error was raised: {err}"
+            )
+
+
+@set_directory(CURR_DIR)
+def register_hand_envs():
+    print("RLHive:> Registering Arm Envs")
+    env_list = ["motorFingerReachFixed-v0"]
 
     # Hand Manipulation Suite ======================================================================
     for env in env_list:
