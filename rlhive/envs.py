@@ -6,10 +6,12 @@
 # Custom env reg for RoboHive usage in TorchRL
 # Pixel rendering will be queried by torchrl, so we don't include those keys in visual_obs_keys_wt
 import os
+import warnings
 from pathlib import Path
 
-import mj_envs.envs.env_variants.register_env_variant
 import mj_envs.envs.multi_task.substeps1
+
+from mj_envs.envs.env_variants import register_env_variant
 
 visual_obs_keys_wt = mj_envs.envs.multi_task.substeps1.visual_obs_keys_wt
 
@@ -46,6 +48,23 @@ RANDOM_ENTRY_POINT = mj_envs.envs.multi_task.substeps1.RANDOM_ENTRY_POINT
 FIXED_ENTRY_POINT = mj_envs.envs.multi_task.substeps1.FIXED_ENTRY_POINT
 ENTRY_POINT = RANDOM_ENTRY_POINT
 
+override_keys = [
+    "objs_jnt",
+    "end_effector",
+    "knob1_site_err",
+    "knob2_site_err",
+    "knob3_site_err",
+    "knob4_site_err",
+    "light_site_err",
+    "slide_site_err",
+    "leftdoor_site_err",
+    "rightdoor_site_err",
+    "microhandle_site_err",
+    "kettle_site0_err",
+    "rgb:right_cam:224x224:2d",
+    "rgb:left_cam:224x224:2d",
+]
+
 
 @set_directory(CURR_DIR)
 def register_kitchen_envs():
@@ -70,7 +89,7 @@ def register_kitchen_envs():
         "kitchen_rdoor_open-v3",
         "kitchen_micro_close-v3",
         "kitchen_micro_open-v3",
-        "kitchen_close-v3",
+        # "kitchen_close-v3",
     ]
 
     visual_obs_keys_wt = {
@@ -80,10 +99,18 @@ def register_kitchen_envs():
         "rgb:left_cam:224x224:2d": 1.0,
     }
     for env in env_list:
-        new_env_name = "visual_" + env
-        mj_envs.envs.env_variants.register_env_variant(
-            env, variants={"obs_keys_wt": visual_obs_keys_wt}, variant_id=new_env_name
-        )
+        try:
+            new_env_name = "visual_" + env
+            register_env_variant(
+                env,
+                variants={"obs_keys_wt": visual_obs_keys_wt},
+                variant_id=new_env_name,
+                override_keys=override_keys,
+            )
+        except AssertionError as err:
+            warnings.warn(
+                f"Could not register {new_env_name}, the following error was raised: {err}"
+            )
 
 
 @set_directory(CURR_DIR)
@@ -106,7 +133,67 @@ def register_franka_envs():
         "rgb:left_cam:224x224:2d": 1.0,
     }
     for env in env_list:
-        new_env_name = "visual_" + env
-        mj_envs.envs.env_variants.register_env_variant(
-            env, variants={"obs_keys_wt": visual_obs_keys_wt}, variant_id=new_env_name
-        )
+        try:
+            new_env_name = "visual_" + env
+            register_env_variant(
+                env,
+                variants={"obs_keys_wt": visual_obs_keys_wt},
+                variant_id=new_env_name,
+                override_keys=override_keys,
+            )
+        except AssertionError as err:
+            warnings.warn(
+                f"Could not register {new_env_name}, the following error was raised: {err}"
+            )
+
+
+@set_directory(CURR_DIR)
+def register_hand_envs():
+    print("RLHive:> Registering Arm Envs")
+    env_list = ["door-v1", "hammer-v1", "pen-v1", "relocate-v1"]
+
+    # Hand Manipulation Suite ======================================================================
+    for env in env_list:
+        try:
+            new_env_name = "visual_" + env
+            register_env_variant(
+                env,
+                variants={
+                    "obs_keys": [
+                        "hand_jnt",
+                        "rgb:vil_camera:224x224:2d",
+                        "rgb:fixed:224x224:2d",
+                    ]
+                },
+                variant_id=new_env_name,
+            )
+        except AssertionError as err:
+            warnings.warn(
+                f"Could not register {new_env_name}, the following error was raised: {err}"
+            )
+
+
+@set_directory(CURR_DIR)
+def register_hand_envs():
+    print("RLHive:> Registering Arm Envs")
+    env_list = ["motorFingerReachFixed-v0"]
+
+    # Hand Manipulation Suite ======================================================================
+    for env in env_list:
+        try:
+            new_env_name = "visual_" + env
+            register_env_variant(
+                env,
+                variants={
+                    "obs_keys": [
+                        "hand_jnt",
+                        "rgb:vil_camera:224x224:2d",
+                        "rgb:fixed:224x224:2d",
+                    ]
+                },
+                variant_id=new_env_name,
+            )
+        except AssertionError as err:
+            warnings.warn(
+                f"Could not register {new_env_name}, the following error was raised: {err}"
+            )

@@ -161,7 +161,10 @@ class RoboHiveEnv(GymEnv):
                     pix = pix[None]
                 pixel_list.append(pix)
             elif key in self._env.obs_keys:
-                obsvec.append(observations[key])  # ravel helps with images
+                value = observations[key]
+                if not value.shape:
+                    value = value[None]
+                obsvec.append(value)  # ravel helps with images
         if obsvec:
             obsvec = np.concatenate(obsvec, 0)
         if self.from_pixels:
@@ -173,21 +176,13 @@ class RoboHiveEnv(GymEnv):
     def read_info(self, info, tensordict_out):
         out = {}
         for key, value in info.items():
-            if key in ("obs_dict",):
+            if key in ("obs_dict", "done", "reward"):
                 continue
             if isinstance(value, dict):
                 value = make_tensordict(value, batch_size=[])
             out[key] = value
         tensordict_out.update(out)
         return tensordict_out
-
-    def _step(self, td):
-        td = super()._step(td)
-        return td
-
-    def _reset(self, td=None, **kwargs):
-        td = super()._reset(td, **kwargs)
-        return td
 
     def to(self, *args, **kwargs):
         out = super().to(*args, **kwargs)
