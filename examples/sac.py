@@ -4,6 +4,7 @@ from torchrl.collectors import MultiaSyncDataCollector
 from torchrl.record import VideoRecorder
 
 os.environ["sim_backend"] = "MUJOCO"
+os.environ["MUJOCO_GL"] = "egl"
 
 
 import hydra
@@ -282,7 +283,7 @@ def main(args: DictConfig):
     env_configs = {
         "reward_scaling": args.reward_scaling,
         "visual_transform": args.visual_transform,
-        "device": "cpu",
+        "device": device,
     }
     train_env = make_env(num_envs=args.env_per_collector, task=args.task, **env_configs)
     # add forward pass for initialization with proof env
@@ -376,7 +377,7 @@ def main(args: DictConfig):
         prb=args.prb,
         buffer_size=args.buffer_size,
         buffer_scratch_dir=args.buffer_scratch_dir,
-        device="cpu",
+        device=args.device,
     )
 
     # Optimizers
@@ -431,7 +432,7 @@ def main(args: DictConfig):
         postproc=None,
         split_trajs=False,
         devices=collector_device,  # device for execution
-        passing_devices=collector_device,  # device where data will be stored and passed
+        storing_devices=collector_device,  # device where data will be stored and passed
         seed=args.seed,
         pin_memory=False,
         update_at_each_batch=False,
