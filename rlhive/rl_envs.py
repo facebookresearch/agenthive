@@ -179,6 +179,7 @@ class RoboHiveEnv(GymEnv):
             if key in ("obs_dict", "done", "reward"):
                 continue
             if isinstance(value, dict):
+                value = {key: _val for key, _val in value.items() if _val is not None}
                 value = make_tensordict(value, batch_size=[])
             out[key] = value
         tensordict_out.update(out)

@@ -174,8 +174,8 @@ def register_hand_envs():
 
 
 @set_directory(CURR_DIR)
-def register_hand_envs():
-    print("RLHive:> Registering Arm Envs")
+def register_myo_envs():
+    print("RLHive:> Registering Myo Envs")
     env_list = ["motorFingerReachFixed-v0"]
 
     # Hand Manipulation Suite ======================================================================

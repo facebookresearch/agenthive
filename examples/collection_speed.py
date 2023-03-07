@@ -9,18 +9,7 @@ import tqdm
 
 from rlhive.rl_envs import RoboHiveEnv
 from torchrl.collectors.collectors import MultiaSyncDataCollector, RandomPolicy
-from torchrl.envs import (
-    CatFrames,
-    Compose,
-    EnvCreator,
-    GrayScale,
-    ObservationNorm,
-    ParallelEnv,
-    R3MTransform,
-    Resize,
-    ToTensorImage,
-    TransformedEnv,
-)
+from torchrl.envs import EnvCreator, ParallelEnv, R3MTransform, TransformedEnv
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--num_workers", default=2, type=int)
