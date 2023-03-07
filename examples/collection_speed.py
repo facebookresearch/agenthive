@@ -1,5 +1,7 @@
 import os
 
+import torch.cuda
+
 os.environ["sim_backend"] = "MUJOCO"
 
 import argparse
@@ -8,17 +10,12 @@ import time
 import tqdm
 
 from rlhive.rl_envs import RoboHiveEnv
-from torchrl.collectors.collectors import MultiaSyncDataCollector, RandomPolicy
+from torchrl.collectors.collectors import MultiaSyncDataCollector, RandomPolicy, SyncDataCollector
 from torchrl.envs import (
-    CatFrames,
-    Compose,
     EnvCreator,
-    GrayScale,
-    ObservationNorm,
     ParallelEnv,
+    SerialEnv,
     R3MTransform,
-    Resize,
-    ToTensorImage,
     TransformedEnv,
 )
 
@@ -29,14 +26,21 @@ parser.add_argument("--frames_per_batch", default=50, type=int)
 parser.add_argument("--total_frames", default=20_000, type=int)
 parser.add_argument("--r3m", action="store_true")
 parser.add_argument("--env_name", default="franka_micro_random-v3")
+parser.add_argument("--serial", action="store_true")
 
 if __name__ == "__main__":
     args = parser.parse_args()
-
-    penv = ParallelEnv(
-        args.num_workers,
-        EnvCreator(lambda: RoboHiveEnv(args.env_name, device="cuda:0")),
-    )
+    device = "cuda:0" if torch.has_cuda else "cpu"
+    if args.serial:
+        penv = SerialEnv(
+            args.num_workers,
+            lambda: RoboHiveEnv(args.env_name, device=device),
+        )
+    else:
+        penv = ParallelEnv(
+            args.num_workers,
+            EnvCreator(lambda: RoboHiveEnv(args.env_name, device=device)),
+        )
     if "visual" in args.env_name:
         if args.r3m:
             tenv = TransformedEnv(
@@ -47,21 +51,36 @@ if __name__ == "__main__":
             tenv = penv
     else:
         tenv = penv
-        # tenv.transform[-1].init_stats(reduce_dim=(0, 1), cat_dim=1,
-        #                               num_iter=1000)
     policy = RandomPolicy(tenv.action_spec)  # some random policy
 
-    devices = [f"cuda:{i}" for i in range(args.num_collectors)]
+    if torch.cuda.device_count():
+        devices = [f"cuda:{i}" for i in range(args.num_collectors)]
+    else:
+        devices = ["cpu"] * args.num_collectors
     print(devices)
-    collector = MultiaSyncDataCollector(
-        [tenv] * args.num_collectors,
-        policy=policy,
-        frames_per_batch=args.frames_per_batch,
-        total_frames=args.total_frames,
-        passing_devices=devices,
-        devices=devices,
-        split_trajs=False,
-    )
+    if args.serial:
+        device = devices[0]
+        assert args.num_collectors == 1
+        collector = SyncDataCollector(
+            tenv,
+            policy=policy,
+            frames_per_batch=args.frames_per_batch,
+            total_frames=args.total_frames,
+            passing_device=device,
+            device=device,
+            split_trajs=False,
+        )
+    else:
+        collector = MultiaSyncDataCollector(
+            [tenv] * args.num_collectors,
+            policy=policy,
+            frames_per_batch=args.frames_per_batch,
+            total_frames=args.total_frames,
+            passing_devices=devices,
+            devices=devices,
+            split_trajs=False,
+        )
+
     pbar = tqdm.tqdm(total=args.total_frames)
     for i, data in enumerate(collector):
         if i == 3:

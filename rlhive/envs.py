@@ -174,9 +174,36 @@ def register_hand_envs():
 
 
 @set_directory(CURR_DIR)
-def register_hand_envs():
-    print("RLHive:> Registering Arm Envs")
+def register_myo_envs():
+    print("RLHive:> Registering Myo Envs")
     env_list = ["motorFingerReachFixed-v0"]
+
+    # Hand Manipulation Suite ======================================================================
+    for env in env_list:
+        try:
+            new_env_name = "visual_" + env
+            print(f"registering {new_env_name}")
+            register_env_variant(
+                env,
+                variants={
+                    "obs_keys": [
+                        "rgb:plam_lookat:224x224:2d",
+                        "rgb:hand_bottom:224x224:2d",
+                        "rgb:hand_side_inter:224x224:2d",
+                    ]
+                },
+                variant_id=new_env_name,
+            )
+        except AssertionError as err:
+            warnings.warn(
+                f"Could not register {new_env_name}, the following error was raised: {err}"
+            )
+
+
+@set_directory(CURR_DIR)
+def register_adroit_envs():
+    print("RLHive:> Registering Adroit Envs")
+    env_list = ["AdroitAirplaneTrackFixed-v0"]
 
     # Hand Manipulation Suite ======================================================================
     for env in env_list:
@@ -186,9 +213,8 @@ def register_hand_envs():
                 env,
                 variants={
                     "obs_keys": [
-                        "hand_jnt",
-                        "rgb:vil_camera:224x224:2d",
                         "rgb:fixed:224x224:2d",
+                        "rgb:vil_camera:224x224:2d",
                     ]
                 },
                 variant_id=new_env_name,
