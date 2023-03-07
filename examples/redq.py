@@ -48,7 +48,7 @@ def main(args: DictConfig):
 
     from torchrl.objectives.deprecated import REDQLoss_deprecated as REDQLoss
     from torchrl.record import VideoRecorder
-    from torchrl.record.loggers import WandbLogger
+    from torchrl.record.loggers.wandb import WandbLogger
     from torchrl.trainers import Recorder
 
     # ===========================================================================================

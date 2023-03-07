@@ -47,7 +47,7 @@ def main(args: DictConfig):
     )
     from torchrl.objectives import SoftUpdate
     from torchrl.record import VideoRecorder
-    from torchrl.record.loggers import WandbLogger
+    from torchrl.record.loggers.wandb import WandbLogger
     from torchrl.trainers import Recorder
 
     # ===========================================================================================
