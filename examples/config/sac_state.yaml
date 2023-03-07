@@ -1,3 +1,5 @@
+algo: sac
+
 default:
     - override hydra/output: local
     - override hydra/launcher: local
