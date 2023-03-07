@@ -10,10 +10,8 @@ from omegaconf import DictConfig
 
 os.environ["sim_backend"] = "MUJOCO"
 
-def main(args: DictConfig):
 
-    from torchrl.collectors import MultiaSyncDataCollector
-    from torchrl.record import VideoRecorder
+def main(args: DictConfig):
 
     import numpy as np
     import torch.cuda
@@ -23,8 +21,8 @@ def main(args: DictConfig):
     from tensordict import TensorDict
 
     from torch import nn, optim
-    from torchrl.data import TensorDictPrioritizedReplayBuffer, \
-        TensorDictReplayBuffer
+    from torchrl.collectors import MultiaSyncDataCollector
+    from torchrl.data import TensorDictPrioritizedReplayBuffer, TensorDictReplayBuffer
 
     from torchrl.data.replay_buffers.storages import LazyMemmapStorage
 
@@ -37,17 +35,19 @@ def main(args: DictConfig):
         SelectTransform,
         TransformedEnv,
     )
-    from torchrl.envs.transforms import Compose, FlattenObservation, \
-        RewardScaling
+    from torchrl.envs.transforms import Compose, FlattenObservation, RewardScaling
     from torchrl.envs.utils import set_exploration_mode, step_mdp
     from torchrl.modules import MLP, NormalParamWrapper, SafeModule
     from torchrl.modules.distributions import TanhNormal
 
-    from torchrl.modules.tensordict_module.actors import ProbabilisticActor, \
-        ValueOperator
+    from torchrl.modules.tensordict_module.actors import (
+        ProbabilisticActor,
+        ValueOperator,
+    )
     from torchrl.objectives import SoftUpdate
 
     from torchrl.objectives.deprecated import REDQLoss_deprecated as REDQLoss
+    from torchrl.record import VideoRecorder
     from torchrl.record.loggers import WandbLogger
     from torchrl.trainers import Recorder
 
@@ -106,7 +106,7 @@ def main(args: DictConfig):
         env = make_transformed_env(
             env=base_env,
             reward_scaling=reward_scaling,
-            visual_transform=visual_transform
+            visual_transform=visual_transform,
         )
 
         return env
@@ -122,23 +122,15 @@ def main(args: DictConfig):
         env = TransformedEnv(
             env,
             SelectTransform(
-                "solved",
-                "pixels",
-                "observation",
-                "rwd_dense",
-                "rwd_sparse"
-                ),
+                "solved", "pixels", "observation", "rwd_dense", "rwd_sparse"
+            ),
         )
         if visual_transform == "r3m":
             vec_keys = ["r3m_vec"]
             selected_keys = ["observation", "r3m_vec"]
             env.append_transform(
                 Compose(
-                    R3MTransform(
-                        "resnet50",
-                        in_keys=["pixels"],
-                        download=True
-                        ).eval(),
+                    R3MTransform("resnet50", in_keys=["pixels"], download=True).eval(),
                     FlattenObservation(-2, -1, in_keys=vec_keys),
                 )
             )  # Necessary to Compose R3MTransform with FlattenObservation; Track bug: https://github.com/pytorch/rl/issues/802
@@ -148,9 +140,7 @@ def main(args: DictConfig):
             env.append_transform(
                 Compose(
                     R3MTransform(
-                        "resnet50",
-                        in_keys=["pixels"],
-                        download="IMAGENET1K_V2"
+                        "resnet50", in_keys=["pixels"], download="IMAGENET1K_V2"
                     ).eval(),
                     FlattenObservation(-2, -1, in_keys=vec_keys),
                 )
@@ -161,9 +151,7 @@ def main(args: DictConfig):
             raise NotImplementedError(visual_transform)
         env.append_transform(RewardScaling(loc=0.0, scale=reward_scaling))
         out_key = "observation_vector"
-        env.append_transform(
-            CatTensors(in_keys=selected_keys, out_key=out_key)
-            )
+        env.append_transform(CatTensors(in_keys=selected_keys, out_key=out_key))
         return env
 
     # ===========================================================================================
@@ -255,19 +243,13 @@ def main(args: DictConfig):
     @torch.no_grad()
     @set_exploration_mode("random")
     def dataloader(
-        total_frames,
-        fpb,
-        train_env,
-        actor,
-        actor_collection,
-        device_collection
+        total_frames, fpb, train_env, actor, actor_collection, device_collection
     ):
         params = TensorDict(
             {k: v for k, v in actor.named_parameters()}, batch_size=[]
         ).unflatten_keys(".")
         params_collection = TensorDict(
-            {k: v for k, v in actor_collection.named_parameters()},
-            batch_size=[]
+            {k: v for k, v in actor_collection.named_parameters()}, batch_size=[]
         ).unflatten_keys(".")
         _prev = None
 
@@ -275,9 +257,7 @@ def main(args: DictConfig):
         while collected_frames < total_frames:
             params_collection.update_(params)
             batch = TensorDict(
-                {},
-                batch_size=[fpb, *train_env.batch_size],
-                device=device_collection
+                {}, batch_size=[fpb, *train_env.batch_size], device=device_collection
             )
             for t in range(fpb):
                 if _prev is None:
@@ -290,7 +270,6 @@ def main(args: DictConfig):
                 _prev = step_mdp(_new, exclude_done=False)
             collected_frames += batch.numel()
             yield batch
-
 
     # customize device at will
     device = args.device
@@ -439,7 +418,7 @@ def main(args: DictConfig):
     if isinstance(collector_device, str):
         collector_device = [collector_device]
     collector = MultiaSyncDataCollector(
-        create_env_fn=[train_env.to(device) for device in collector_device],
+        create_env_fn=[train_env for _ in collector_device],
         policy=actor_model_explore,
         total_frames=args.total_frames,
         max_frames_per_traj=args.frames_per_batch,

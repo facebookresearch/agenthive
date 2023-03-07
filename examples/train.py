@@ -1,9 +1,9 @@
 """Entry point for RLHive"""
 import hydra
 from omegaconf import DictConfig
+from redq import main as train_redq
 
 from sac import main as train_sac
-from redq import main as train_redq
 
 
 @hydra.main(config_name="sac_mixed.yaml", config_path="config")
