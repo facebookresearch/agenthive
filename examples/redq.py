@@ -1,278 +1,276 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+#
+# This source code is licensed under the MIT license found in the
+# LICENSE file in the root directory of this source tree.
+
+
 import os
 
-from torchrl.collectors import MultiaSyncDataCollector
-from torchrl.record import VideoRecorder
+from omegaconf import DictConfig
 
 os.environ["sim_backend"] = "MUJOCO"
 
 
-import hydra
-
-import numpy as np
-import torch
-import torch.cuda
-import tqdm
-from omegaconf import DictConfig
-from rlhive.rl_envs import RoboHiveEnv
-
-from tensordict import TensorDict
-
-from torch import nn, optim
-from torchrl.data import TensorDictPrioritizedReplayBuffer, TensorDictReplayBuffer
-
-from torchrl.data.replay_buffers.storages import LazyMemmapStorage
-
-# from torchrl.envs import SerialEnv as ParallelEnv, R3MTransform, SelectTransform, TransformedEnv
-from torchrl.envs import (
-    CatTensors,
-    EnvCreator,
-    ParallelEnv,
-    R3MTransform,
-    SelectTransform,
-    TransformedEnv,
-)
-from torchrl.envs.transforms import Compose, FlattenObservation, RewardScaling
-from torchrl.envs.utils import set_exploration_mode, step_mdp
-from torchrl.modules import MLP, NormalParamWrapper, SafeModule
-from torchrl.modules.distributions import TanhNormal
-
-from torchrl.modules.tensordict_module.actors import ProbabilisticActor, ValueOperator
-from torchrl.objectives import SoftUpdate
-
-from torchrl.objectives.deprecated import REDQLoss_deprecated as REDQLoss
-from torchrl.record.loggers import WandbLogger
-from torchrl.trainers import Recorder
-
-
-# ===========================================================================================
-# Env constructor
-# ---------------
-# - Use the RoboHiveEnv class to wrap robohive envs in torchrl's GymWrapper
-# - Add transforms immediately after that:
-#   - SelectTransform: selects the relevant kesy from our output
-#   - R3MTransform
-#   - FlattenObservation: The images delivered by robohive have a singleton dim to start with, we need to flatten that
-#   - RewardScaling
-#
-# One can also possibly use ObservationNorm.
-#
-# TIPS:
-# - For faster execution, you should follow this abstract scheme, where we reduce the data
-#   to be passed from worker to worker to a minimum, we apply R3M to a batch and append the
-#   rest of the transforms afterward:
-#
-#  >>> env = TransformedEnv(
-#  ...     ParallelEnv(N, lambda: TransformedEnv(RoboHiveEnv(...), SelectTransform(...))),
-#  ...     Compose(
-#  ...         R3MTransform(...),
-#  ...         FlattenObservation(...),
-#  ...         *other_transforms,
-#  ...     ))
-#
-
-
-def traj_is_solved(done, solved):
-    solved = solved.view_as(done)
-    done_cumsum = done.cumsum(-2)
-    count = 0
-    _i = 0
-    for _i, u in enumerate(done_cumsum.unique()):
-        is_solved = solved[done_cumsum == u].any()
-        count += is_solved
-    return count / (_i + 1)
-
-
-def traj_total_reward(done, reward):
-    reward = reward.view_as(done)
-    done_cumsum = done.cumsum(-2)
-    count = 0
-    _i = 0
-    for _i, u in enumerate(done_cumsum.unique()):
-        count += reward[done_cumsum == u].sum()
-    return count / (_i + 1)
-
-
-def make_env(num_envs, task, visual_transform, reward_scaling, device):
-    if num_envs > 1:
-        base_env = ParallelEnv(
-            num_envs, EnvCreator(lambda: RoboHiveEnv(task, device=device))
-        )
-    else:
-        base_env = RoboHiveEnv(task, device=device)
-    env = make_transformed_env(
-        env=base_env, reward_scaling=reward_scaling, visual_transform=visual_transform
-    )
-
-    return env
-
-
-def make_transformed_env(
-    env,
-    reward_scaling=5.0,
-    visual_transform="r3m",
-):
-    """
-    Apply transforms to the env (such as reward scaling and state normalization)
-    """
-    env = TransformedEnv(
-        env,
-        SelectTransform("solved", "pixels", "observation", "rwd_dense", "rwd_sparse"),
-    )
-    if visual_transform == "r3m":
-        vec_keys = ["r3m_vec"]
-        selected_keys = ["observation", "r3m_vec"]
-        env.append_transform(
-            Compose(
-                R3MTransform("resnet50", in_keys=["pixels"], download=True).eval(),
-                FlattenObservation(-2, -1, in_keys=vec_keys),
-            )
-        )  # Necessary to Compose R3MTransform with FlattenObservation; Track bug: https://github.com/pytorch/rl/issues/802
-    elif visual_transform == "rrl":
-        vec_keys = ["r3m_vec"]
-        selected_keys = ["observation", "r3m_vec"]
-        env.append_transform(
-            Compose(
-                R3MTransform(
-                    "resnet50", in_keys=["pixels"], download="IMAGENET1K_V2"
-                ).eval(),
-                FlattenObservation(-2, -1, in_keys=vec_keys),
-            )
-        )  # Necessary to Compose R3MTransform with FlattenObservation; Track bug: https://github.com/pytorch/rl/issues/802
-    elif not visual_transform:
-        selected_keys = ["observation"]
-    else:
-        raise NotImplementedError(visual_transform)
-    env.append_transform(RewardScaling(loc=0.0, scale=reward_scaling))
-    out_key = "observation_vector"
-    env.append_transform(CatTensors(in_keys=selected_keys, out_key=out_key))
-    return env
-
-
-# ===========================================================================================
-# Making a recorder
-# -----------------
-#
-# A `Recorder` is a dedicated torchrl class that will run the policy in the test env
-# once every X steps (eg X=1M).
-#
-
-
-def make_recorder(
-    task: str,
-    frame_skip: int,
-    record_interval: int,
-    actor_model_explore: object,
-    eval_traj: int,
-    env_configs: dict,
-    wandb_logger: WandbLogger,
-    num_envs: int,
-):
-    test_env = make_env(num_envs=num_envs, task=task, **env_configs)
-    if "visual" in task:
-        test_env.insert_transform(
-            0, VideoRecorder(wandb_logger, "test", in_keys=["pixels"])
-        )
-    test_env.reset()
-    recorder_obj = Recorder(
-        record_frames=eval_traj * test_env.horizon,
-        frame_skip=frame_skip,
-        policy_exploration=actor_model_explore,
-        recorder=test_env,
-        exploration_mode="mean",
-        record_interval=record_interval,
-        log_keys=["reward", "solved", "done", "rwd_sparse"],
-        out_keys={
-            "reward": "r_evaluation",
-            "solved": "success",
-            "done": "done",
-            "rwd_sparse": "rwd_sparse",
-        },
-    )
-    return recorder_obj
-
-
-# ===========================================================================================
-# Relplay buffers
-# ---------------
-#
-# TorchRL also provides prioritized RBs if needed.
-#
-
-
-def make_replay_buffer(
-    prb: bool,
-    buffer_size: int,
-    buffer_scratch_dir: str,
-    device: torch.device,
-    prefetch: int = 10,
-):
-    if prb:
-        replay_buffer = TensorDictPrioritizedReplayBuffer(
-            alpha=0.7,
-            beta=0.5,
-            pin_memory=False,
-            prefetch=prefetch,
-            storage=LazyMemmapStorage(
-                buffer_size,
-                scratch_dir=buffer_scratch_dir,
-                device=device,
-            ),
-        )
-    else:
-        replay_buffer = TensorDictReplayBuffer(
-            pin_memory=False,
-            prefetch=prefetch,
-            storage=LazyMemmapStorage(
-                buffer_size,
-                scratch_dir=buffer_scratch_dir,
-                device=device,
-            ),
-        )
-    return replay_buffer
-
-
-# ===========================================================================================
-# Dataloader
-# ----------
-#
-# This is a simplified version of the dataloder
-#
-
-
-@torch.no_grad()
-@set_exploration_mode("random")
-def dataloader(
-    total_frames, fpb, train_env, actor, actor_collection, device_collection
-):
-    params = TensorDict(
-        {k: v for k, v in actor.named_parameters()}, batch_size=[]
-    ).unflatten_keys(".")
-    params_collection = TensorDict(
-        {k: v for k, v in actor_collection.named_parameters()}, batch_size=[]
-    ).unflatten_keys(".")
-    _prev = None
-
-    collected_frames = 0
-    while collected_frames < total_frames:
-        params_collection.update_(params)
-        batch = TensorDict(
-            {}, batch_size=[fpb, *train_env.batch_size], device=device_collection
-        )
-        for t in range(fpb):
-            if _prev is None:
-                _prev = train_env.reset()
-            _reset = _prev["_reset"] = _prev["done"].clone().squeeze(-1)
-            if _reset.any():
-                _prev = train_env.reset(_prev)
-            _new = train_env.step(actor_collection(_prev))
-            batch[t] = _new
-            _prev = step_mdp(_new, exclude_done=False)
-        collected_frames += batch.numel()
-        yield batch
-
-
-@hydra.main(config_name="redq_mixed.yaml", config_path="config")
 def main(args: DictConfig):
+
+    import numpy as np
+    import torch.cuda
+    import tqdm
+    from rlhive.rl_envs import RoboHiveEnv
+
+    from tensordict import TensorDict
+
+    from torch import nn, optim
+    from torchrl.collectors import MultiaSyncDataCollector
+    from torchrl.data import TensorDictPrioritizedReplayBuffer, TensorDictReplayBuffer
+
+    from torchrl.data.replay_buffers.storages import LazyMemmapStorage
+
+    # from torchrl.envs import SerialEnv as ParallelEnv, R3MTransform, SelectTransform, TransformedEnv
+    from torchrl.envs import (
+        CatTensors,
+        EnvCreator,
+        ParallelEnv,
+        R3MTransform,
+        SelectTransform,
+        TransformedEnv,
+    )
+    from torchrl.envs.transforms import Compose, FlattenObservation, RewardScaling
+    from torchrl.envs.utils import set_exploration_mode, step_mdp
+    from torchrl.modules import MLP, NormalParamWrapper, SafeModule
+    from torchrl.modules.distributions import TanhNormal
+
+    from torchrl.modules.tensordict_module.actors import (
+        ProbabilisticActor,
+        ValueOperator,
+    )
+    from torchrl.objectives import SoftUpdate
+
+    from torchrl.objectives.deprecated import REDQLoss_deprecated as REDQLoss
+    from torchrl.record import VideoRecorder
+    from torchrl.record.loggers.wandb import WandbLogger
+    from torchrl.trainers import Recorder
+
+    # ===========================================================================================
+    # Env constructor
+    # ---------------
+    # - Use the RoboHiveEnv class to wrap robohive envs in torchrl's GymWrapper
+    # - Add transforms immediately after that:
+    #   - SelectTransform: selects the relevant kesy from our output
+    #   - R3MTransform
+    #   - FlattenObservation: The images delivered by robohive have a singleton dim to start with, we need to flatten that
+    #   - RewardScaling
+    #
+    # One can also possibly use ObservationNorm.
+    #
+    # TIPS:
+    # - For faster execution, you should follow this abstract scheme, where we reduce the data
+    #   to be passed from worker to worker to a minimum, we apply R3M to a batch and append the
+    #   rest of the transforms afterward:
+    #
+    #  >>> env = TransformedEnv(
+    #  ...     ParallelEnv(N, lambda: TransformedEnv(RoboHiveEnv(...), SelectTransform(...))),
+    #  ...     Compose(
+    #  ...         R3MTransform(...),
+    #  ...         FlattenObservation(...),
+    #  ...         *other_transforms,
+    #  ...     ))
+    #
+
+    def traj_is_solved(done, solved):
+        solved = solved.view_as(done)
+        done_cumsum = done.cumsum(-2)
+        count = 0
+        _i = 0
+        for _i, u in enumerate(done_cumsum.unique()):
+            is_solved = solved[done_cumsum == u].any()
+            count += is_solved
+        return count / (_i + 1)
+
+    def traj_total_reward(done, reward):
+        reward = reward.view_as(done)
+        done_cumsum = done.cumsum(-2)
+        count = 0
+        _i = 0
+        for _i, u in enumerate(done_cumsum.unique()):
+            count += reward[done_cumsum == u].sum()
+        return count / (_i + 1)
+
+    def make_env(num_envs, task, visual_transform, reward_scaling, device):
+        if num_envs > 1:
+            base_env = ParallelEnv(
+                num_envs, EnvCreator(lambda: RoboHiveEnv(task, device=device))
+            )
+        else:
+            base_env = RoboHiveEnv(task, device=device)
+        env = make_transformed_env(
+            env=base_env,
+            reward_scaling=reward_scaling,
+            visual_transform=visual_transform,
+        )
+
+        return env
+
+    def make_transformed_env(
+        env,
+        reward_scaling=5.0,
+        visual_transform="r3m",
+    ):
+        """
+        Apply transforms to the env (such as reward scaling and state normalization)
+        """
+        env = TransformedEnv(
+            env,
+            SelectTransform(
+                "solved", "pixels", "observation", "rwd_dense", "rwd_sparse"
+            ),
+        )
+        if visual_transform == "r3m":
+            vec_keys = ["r3m_vec"]
+            selected_keys = ["observation", "r3m_vec"]
+            env.append_transform(
+                Compose(
+                    R3MTransform("resnet50", in_keys=["pixels"], download=True).eval(),
+                    FlattenObservation(-2, -1, in_keys=vec_keys),
+                )
+            )  # Necessary to Compose R3MTransform with FlattenObservation; Track bug: https://github.com/pytorch/rl/issues/802
+        elif visual_transform == "rrl":
+            vec_keys = ["r3m_vec"]
+            selected_keys = ["observation", "r3m_vec"]
+            env.append_transform(
+                Compose(
+                    R3MTransform(
+                        "resnet50", in_keys=["pixels"], download="IMAGENET1K_V2"
+                    ).eval(),
+                    FlattenObservation(-2, -1, in_keys=vec_keys),
+                )
+            )  # Necessary to Compose R3MTransform with FlattenObservation; Track bug: https://github.com/pytorch/rl/issues/802
+        elif not visual_transform:
+            selected_keys = ["observation"]
+        else:
+            raise NotImplementedError(visual_transform)
+        env.append_transform(RewardScaling(loc=0.0, scale=reward_scaling))
+        out_key = "observation_vector"
+        env.append_transform(CatTensors(in_keys=selected_keys, out_key=out_key))
+        return env
+
+    # ===========================================================================================
+    # Making a recorder
+    # -----------------
+    #
+    # A `Recorder` is a dedicated torchrl class that will run the policy in the test env
+    # once every X steps (eg X=1M).
+    #
+
+    def make_recorder(
+        task: str,
+        frame_skip: int,
+        record_interval: int,
+        actor_model_explore: object,
+        eval_traj: int,
+        env_configs: dict,
+        wandb_logger: WandbLogger,
+        num_envs: int,
+    ):
+        test_env = make_env(num_envs=num_envs, task=task, **env_configs)
+        if "visual" in task:
+            test_env.insert_transform(
+                0, VideoRecorder(wandb_logger, "test", in_keys=["pixels"])
+            )
+        test_env.reset()
+        recorder_obj = Recorder(
+            record_frames=eval_traj * test_env.horizon,
+            frame_skip=frame_skip,
+            policy_exploration=actor_model_explore,
+            recorder=test_env,
+            exploration_mode="mean",
+            record_interval=record_interval,
+            log_keys=["reward", "solved", "done", "rwd_sparse"],
+            out_keys={
+                "reward": "r_evaluation",
+                "solved": "success",
+                "done": "done",
+                "rwd_sparse": "rwd_sparse",
+            },
+        )
+        return recorder_obj
+
+    # ===========================================================================================
+    # Relplay buffers
+    # ---------------
+    #
+    # TorchRL also provides prioritized RBs if needed.
+    #
+
+    def make_replay_buffer(
+        prb: bool,
+        buffer_size: int,
+        buffer_scratch_dir: str,
+        device: torch.device,
+        prefetch: int = 10,
+    ):
+        if prb:
+            replay_buffer = TensorDictPrioritizedReplayBuffer(
+                alpha=0.7,
+                beta=0.5,
+                pin_memory=False,
+                prefetch=prefetch,
+                storage=LazyMemmapStorage(
+                    buffer_size,
+                    scratch_dir=buffer_scratch_dir,
+                    device=device,
+                ),
+            )
+        else:
+            replay_buffer = TensorDictReplayBuffer(
+                pin_memory=False,
+                prefetch=prefetch,
+                storage=LazyMemmapStorage(
+                    buffer_size,
+                    scratch_dir=buffer_scratch_dir,
+                    device=device,
+                ),
+            )
+        return replay_buffer
+
+    # ===========================================================================================
+    # Dataloader
+    # ----------
+    #
+    # This is a simplified version of the dataloder
+    #
+
+    @torch.no_grad()
+    @set_exploration_mode("random")
+    def dataloader(
+        total_frames, fpb, train_env, actor, actor_collection, device_collection
+    ):
+        params = TensorDict(
+            {k: v for k, v in actor.named_parameters()}, batch_size=[]
+        ).unflatten_keys(".")
+        params_collection = TensorDict(
+            {k: v for k, v in actor_collection.named_parameters()}, batch_size=[]
+        ).unflatten_keys(".")
+        _prev = None
+
+        collected_frames = 0
+        while collected_frames < total_frames:
+            params_collection.update_(params)
+            batch = TensorDict(
+                {}, batch_size=[fpb, *train_env.batch_size], device=device_collection
+            )
+            for t in range(fpb):
+                if _prev is None:
+                    _prev = train_env.reset()
+                _reset = _prev["_reset"] = _prev["done"].clone().squeeze(-1)
+                if _reset.any():
+                    _prev = train_env.reset(_prev)
+                _new = train_env.step(actor_collection(_prev))
+                batch[t] = _new
+                _prev = step_mdp(_new, exclude_done=False)
+            collected_frames += batch.numel()
+            yield batch
+
     # customize device at will
     device = args.device
     torch.manual_seed(args.seed)
@@ -420,7 +418,7 @@ def main(args: DictConfig):
     if isinstance(collector_device, str):
         collector_device = [collector_device]
     collector = MultiaSyncDataCollector(
-        create_env_fn=[train_env.to(device) for device in collector_device],
+        create_env_fn=[train_env for _ in collector_device],
         policy=actor_model_explore,
         total_frames=args.total_frames,
         max_frames_per_traj=args.frames_per_batch,
