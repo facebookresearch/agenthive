@@ -2,6 +2,8 @@ default:
     - override hydra/output: local
     - override hydra/launcher: local
 
+algo: redq
+
 # Logger
 exp_name: ${task}_sac_${visual_transform}
 visual_transform: r3m

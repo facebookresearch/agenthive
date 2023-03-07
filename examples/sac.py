@@ -3,18 +3,17 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
+import os
 
 from omegaconf import DictConfig
 
+os.environ["sim_backend"] = "MUJOCO"
+os.environ["MUJOCO_GL"] = "egl"
+
 
 def main(args: DictConfig):
-    import os
-
     from torchrl.collectors import MultiaSyncDataCollector
     from torchrl.record import VideoRecorder
-
-    os.environ["sim_backend"] = "MUJOCO"
-    os.environ["MUJOCO_GL"] = "egl"
 
     import numpy as np
     import torch.cuda
@@ -26,7 +25,8 @@ def main(args: DictConfig):
     from tensordict import TensorDict
 
     from torch import nn, optim
-    from torchrl.data import TensorDictPrioritizedReplayBuffer, TensorDictReplayBuffer
+    from torchrl.data import TensorDictPrioritizedReplayBuffer, \
+        TensorDictReplayBuffer
 
     from torchrl.data.replay_buffers.storages import LazyMemmapStorage
 
@@ -39,7 +39,8 @@ def main(args: DictConfig):
         SelectTransform,
         TransformedEnv,
     )
-    from torchrl.envs.transforms import Compose, FlattenObservation, RewardScaling
+    from torchrl.envs.transforms import Compose, FlattenObservation, \
+        RewardScaling
     from torchrl.envs.utils import set_exploration_mode, step_mdp
     from torchrl.modules import MLP, NormalParamWrapper, SafeModule
     from torchrl.modules.distributions import TanhNormal
@@ -131,7 +132,11 @@ def main(args: DictConfig):
             selected_keys = ["observation", "r3m_vec"]
             env.append_transform(
                 Compose(
-                    R3MTransform("resnet50", in_keys=["pixels"], download=True).eval(),
+                    R3MTransform(
+                        "resnet50",
+                        in_keys=["pixels"],
+                        download=True
+                    ).eval(),
                     FlattenObservation(-2, -1, in_keys=vec_keys),
                 )
             )  # Necessary to Compose R3MTransform with FlattenObservation; Track bug: https://github.com/pytorch/rl/issues/802
@@ -141,7 +146,9 @@ def main(args: DictConfig):
             env.append_transform(
                 Compose(
                     R3MTransform(
-                        "resnet50", in_keys=["pixels"], download="IMAGENET1K_V2"
+                        "resnet50",
+                        in_keys=["pixels"],
+                        download="IMAGENET1K_V2"
                     ).eval(),
                     FlattenObservation(-2, -1, in_keys=vec_keys),
                 )
@@ -152,7 +159,9 @@ def main(args: DictConfig):
             raise NotImplementedError(visual_transform)
         env.append_transform(RewardScaling(loc=0.0, scale=reward_scaling))
         out_key = "observation_vector"
-        env.append_transform(CatTensors(in_keys=selected_keys, out_key=out_key))
+        env.append_transform(
+            CatTensors(in_keys=selected_keys, out_key=out_key)
+        )
         return env
 
     # ===========================================================================================
@@ -244,13 +253,19 @@ def main(args: DictConfig):
     @torch.no_grad()
     @set_exploration_mode("random")
     def dataloader(
-        total_frames, fpb, train_env, actor, actor_collection, device_collection
+        total_frames,
+        fpb,
+        train_env,
+        actor,
+        actor_collection,
+        device_collection
     ):
         params = TensorDict(
             {k: v for k, v in actor.named_parameters()}, batch_size=[]
         ).unflatten_keys(".")
         params_collection = TensorDict(
-            {k: v for k, v in actor_collection.named_parameters()}, batch_size=[]
+            {k: v for k, v in actor_collection.named_parameters()},
+            batch_size=[]
         ).unflatten_keys(".")
         _prev = None
 
@@ -258,7 +273,9 @@ def main(args: DictConfig):
         while collected_frames < total_frames:
             params_collection.update_(params)
             batch = TensorDict(
-                {}, batch_size=[fpb, *train_env.batch_size], device=device_collection
+                {},
+                batch_size=[fpb, *train_env.batch_size],
+                device=device_collection
             )
             for t in range(fpb):
                 if _prev is None:
@@ -283,7 +300,11 @@ def main(args: DictConfig):
         "visual_transform": args.visual_transform,
         "device": device,
     }
-    train_env = make_env(num_envs=args.env_per_collector, task=args.task, **env_configs)
+    train_env = make_env(
+        num_envs=args.env_per_collector,
+        task=args.task,
+        **env_configs
+    )
     # add forward pass for initialization with proof env
     proof_env = make_env(num_envs=1, task=args.task, **env_configs)
 
@@ -429,8 +450,10 @@ def main(args: DictConfig):
         reset_at_each_iter=False,
         postproc=None,
         split_trajs=False,
-        devices=collector_device,  # device for execution
-        storing_devices=collector_device,  # device where data will be stored and passed
+        devices=collector_device,
+        # device for execution
+        storing_devices=collector_device,
+        # device where data will be stored and passed
         seed=args.seed,
         pin_memory=False,
         update_at_each_batch=False,
@@ -461,7 +484,10 @@ def main(args: DictConfig):
                 entropies,
             ) = ([], [], [], [], [], [])
             for _ in range(
-                max(1, args.frames_per_batch * args.utd_ratio // args.batch_size)
+                max(
+                    1,
+                    args.frames_per_batch * args.utd_ratio // args.batch_size
+                )
             ):
                 optim_steps += 1
                 # sample from replay buffer
@@ -485,7 +511,9 @@ def main(args: DictConfig):
 
                 # update priority
                 if args.prb:
-                    replay_buffer.update_tensordict_priority(sampled_tensordict)
+                    replay_buffer.update_tensordict_priority(
+                        sampled_tensordict
+                    )
 
                 total_losses.append(loss.item())
                 actor_losses.append(actor_loss.item())
@@ -495,7 +523,11 @@ def main(args: DictConfig):
                 entropies.append(loss_td["entropy"].item())
 
         rewards.append((i, batch["reward"].mean().item()))
-        logger.log_scalar("train_reward", rewards[-1][1], step=collected_frames)
+        logger.log_scalar(
+            "train_reward",
+            rewards[-1][1],
+            step=collected_frames
+        )
         logger.log_scalar("optim_steps", optim_steps, step=collected_frames)
         logger.log_scalar("episodes", episodes, step=collected_frames)
 
@@ -506,12 +538,20 @@ def main(args: DictConfig):
             logger.log_scalar(
                 "actor_loss", np.mean(actor_losses), step=collected_frames
             )
-            logger.log_scalar("q_loss", np.mean(q_losses), step=collected_frames)
+            logger.log_scalar(
+                "q_loss",
+                np.mean(q_losses),
+                step=collected_frames
+            )
             logger.log_scalar(
                 "alpha_loss", np.mean(alpha_losses), step=collected_frames
             )
             logger.log_scalar("alpha", np.mean(alphas), step=collected_frames)
-            logger.log_scalar("entropy", np.mean(entropies), step=collected_frames)
+            logger.log_scalar(
+                "entropy",
+                np.mean(entropies),
+                step=collected_frames
+            )
             logger.log_scalar("grad_norm", gn, step=collected_frames)
         td_record = recorder(None)
         if td_record is not None:
@@ -519,13 +559,21 @@ def main(args: DictConfig):
                 (
                     i,
                     td_record["r_evaluation"]
-                    / recorder.recorder.batch_size.numel(),  # divide by number of eval worker
+                    / recorder.recorder.batch_size.numel(),
+                    # divide by number of eval worker
                 )
             )
-            logger.log_scalar("test_reward", rewards_eval[-1][1], step=collected_frames)
+            logger.log_scalar(
+                "test_reward",
+                rewards_eval[-1][1],
+                step=collected_frames
+            )
             solved = traj_is_solved(td_record["done"], td_record["success"])
             logger.log_scalar("success", solved, step=collected_frames)
-            rwd_sparse = traj_total_reward(td_record["done"], td_record["rwd_sparse"])
+            rwd_sparse = traj_total_reward(
+                td_record["done"],
+                td_record["rwd_sparse"]
+            )
             logger.log_scalar("rwd_sparse", rwd_sparse, step=collected_frames)
 
         if len(rewards_eval):

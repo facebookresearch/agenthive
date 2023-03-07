@@ -1,8 +1,9 @@
-algo: sac
 
 default:
     - override hydra/output: local
     - override hydra/launcher: local
+
+algo: sac
 
 # Logger
 exp_name: ${task}_sac_${visual_transform}
