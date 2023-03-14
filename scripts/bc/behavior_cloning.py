@@ -5,9 +5,8 @@ Minimize bc loss (MLE, MSE, RWR etc.) with pytorch optimizers
 import logging
 logging.disable(logging.CRITICAL)
 import numpy as np
-import time as timer
 import torch
-from torch.autograd import Variable
+import time as timer
 from logger import DataLog
 from tqdm import tqdm
 

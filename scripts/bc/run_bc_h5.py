@@ -13,62 +13,40 @@ class bcolors:
     BOLD = '\033[1m'
     UNDERLINE = '\033[4m'
 
+import os
 from os import environ
 environ['CUDA_DEVICE_ORDER']='PCI_BUS_ID'
 environ['MKL_THREADING_LAYER']='GNU'
-import numpy as np
-import copy
-import torch
-import torch.nn as nn
 import pickle
-import mjrl.envs
-import time as timer
-import argparse
-import os
-import json
-from behavior_cloning import BC
+import yaml
+import hydra
+from omegaconf import DictConfig, OmegaConf
 
-from tqdm import tqdm
-from tabulate import tabulate
-from gaussian_mlp import MLP
-# from mjrl.utils.gym_env import GymEnv
 from logger import DataLog
-from misc import control_seed, parse_overrides
-
+from gaussian_mlp import MLP
+from behavior_cloning import BC
+from misc import control_seed, NpEncoder
 from mj_envs.logger.grouped_datasets import Trace as Trace
 
-def main():
-    # ===============================================================================
-    # Get command line arguments
-    # ===============================================================================
-    parser = argparse.ArgumentParser(description='Model accelerated policy optimization.')
-    parser.add_argument('--output', '-o', type=str, required=True, help='location to store results')
-    parser.add_argument('--config', '-c', type=str, required=True, help='path to config file with exp params')
-    parser.add_argument('--include', '-i', type=str, required=False, help='package to import')
-    args, overrides = parser.parse_known_args()
-
-    OUT_DIR = args.output
+@hydra.main(config_name="bc.yaml", config_path="config")
+def main(job_data: DictConfig):
+    OUT_DIR = os.getcwd()
     if not os.path.exists(OUT_DIR): os.mkdir(OUT_DIR)
     if not os.path.exists(OUT_DIR+'/iterations'): os.mkdir(OUT_DIR+'/iterations')
     if not os.path.exists(OUT_DIR+'/logs'): os.mkdir(OUT_DIR+'/logs')
-    with open(args.config, 'r') as f:
-        job_data = eval(f.read())
-        print('Overriding parameters', overrides)
-        job_data = parse_overrides(job_data, overrides)
-    if args.include: exec("import "+args.include)
 
     # Unpack args and make files for easy access
     logger = DataLog()
     ENV_NAME = job_data['env_name']
-    EXP_FILE = OUT_DIR + '/job_data.json'
+    EXP_FILE = OUT_DIR + '/job_data.yaml'
     SEED = job_data['seed']
 
     # base cases
     if 'device' not in job_data.keys(): job_data['device'] = 'cpu'
     assert 'data_file' in job_data.keys()
-    with open(EXP_FILE, 'w') as f:  json.dump(job_data, f, indent=4)
-    del(job_data['seed'])
-    job_data['base_seed'] = SEED
+
+    yaml_config = OmegaConf.to_yaml(job_data)
+    with open(EXP_FILE, 'w') as file: yaml.dump(yaml_config, file)
 
     # ===============================================================================
     # Setup functions and environment
@@ -79,10 +57,15 @@ def main():
     observation_dim = paths_trace['Rollout0']['observations'].shape[2]
     action_dim = paths_trace['Rollout0']['actions'].shape[2]
     print(f'Policy obs dim {observation_dim} act dim {action_dim}')
-    policy = MLP(None, seed=SEED, hidden_sizes=job_data['policy_size'],
-                    init_log_std=job_data['init_log_std'], min_log_std=job_data['min_log_std'],
+    policy = MLP(
+                    None,
+                    seed=SEED,
+                    action_dim=action_dim,
                     observation_dim=observation_dim,
-                        action_dim=action_dim)
+                    hidden_sizes=job_data['policy_size'],
+                    init_log_std=job_data['init_log_std'],
+                    min_log_std=job_data['min_log_std'],
+    )
 
     # ===============================================================================
     # Model training

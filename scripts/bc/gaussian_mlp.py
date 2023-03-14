@@ -1,6 +1,5 @@
-import numpy as np
 import torch
-from torch.autograd import Variable
+import numpy as np
 
 from misc import tensorize
 
