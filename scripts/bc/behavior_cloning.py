@@ -30,11 +30,12 @@ class BC:
         self.expert_paths = expert_paths
         self.epochs = epochs
         self.mb_size = batch_size
-        self.logger = DataLog()
+        self.logger = logger
         self.loss_type = loss_type
         self.save_logs = save_logs
         self.device = self.policy.device
         assert (self.loss_type == 'MSE' or self.loss_type == 'MLE')
+        if self.save_logs: assert not self.logger is None
 
         if set_transforms:
             in_shift, in_scale, out_shift, out_scale = self.compute_transformations()
@@ -47,10 +48,6 @@ class BC:
         # Loss criterion if required
         if loss_type == 'MSE':
             self.loss_criterion = torch.nn.MSELoss()
-
-        # make logger
-        if self.save_logs:
-            self.logger = logger or DataLog()
 
     def compute_transformations(self):
         # get transformations
@@ -119,26 +116,31 @@ class BC:
         # log stats before
         if self.save_logs:
             loss_val = self.loss(data, idx=range(num_samples)).to('cpu').data.numpy().ravel()[0]
-            self.logger.log_kv('loss_before', loss_val)
+            self.logger.log_scalar("train/loss_before", loss_val, step=0)
             print('BC loss before', loss_val)
 
         # train loop
         for ep in config_tqdm(range(self.epochs), suppress_fit_tqdm):
+            avg_loss = 0.0
+            step = 0
             for mb in range(int(num_samples / self.mb_size)):
                 rand_idx = np.random.choice(num_samples, size=self.mb_size)
                 self.optimizer.zero_grad()
                 loss = self.loss(data, idx=rand_idx)
                 loss.backward()
                 self.optimizer.step()
+                avg_loss = (avg_loss*step + loss.item())/(step+1)
+                step += 1
+
+            if self.save_logs:
+                self.logger.log_scalar("train/bc_loss", avg_loss, step=ep+1)
         params_after_opt = self.policy.get_param_values()
         self.policy.set_param_values(params_after_opt, set_new=True, set_old=True)
 
         # log stats after
         if self.save_logs:
-            self.logger.log_kv('epoch', self.epochs)
             loss_val = self.loss(data, idx=range(num_samples)).to('cpu').data.numpy().ravel()[0]
-            self.logger.log_kv('loss_after', loss_val)
-            self.logger.log_kv('time', (timer.time()-ts))
+            self.logger.log_scalar("train/loss_after", loss_val, step=self.epochs)
             print('BC val loss', loss_val)
 
     def train(self, **kwargs):

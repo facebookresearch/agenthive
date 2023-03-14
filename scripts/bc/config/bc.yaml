@@ -11,6 +11,9 @@ init_log_std: -1.0
 min_log_std: -3.0
 
 eval_traj: 25
+wandb_entity: "rutavms"
+wandb_mode: "offline"
+wandb_project: "SAC_TorchRL"
 
 hydra:
     run:

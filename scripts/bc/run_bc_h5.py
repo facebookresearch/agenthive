@@ -11,19 +11,21 @@ import yaml
 import hydra
 import gym
 import torch
+import wandb
 import numpy as np
 from omegaconf import DictConfig, OmegaConf
 
-from logger import DataLog
 from gaussian_mlp import MLP
 from behavior_cloning import BC
 from misc import control_seed, NpEncoder, bcolors, stack_tensor_dict_list
+from torchrl.record.loggers import WandbLogger
 from mj_envs.logger.grouped_datasets import Trace as Trace
 
 def evaluate_policy(
             policy,
             env,
             num_episodes,
+            epoch,
             horizon=None,
             gamma=1,
             percentile=[],
@@ -31,6 +33,7 @@ def evaluate_policy(
             eval_logger=None,
             device='cpu',
             seed=123,
+            verbose=True,
     ):
     env.seed(seed)
     horizon = env.horizon if horizon is None else horizon
@@ -58,7 +61,8 @@ def evaluate_policy(
             env_infos.append(env_info)
             o = next_o
             t += 1
-        print("Episode: {}; Reward: {}".format(ep, ep_returns[ep]))
+        if verbose:
+            print("Episode: {}; Reward: {}".format(ep, ep_returns[ep]))
         path = dict(
             observations=np.array(observations),
             actions=np.array(actions),
@@ -78,7 +82,14 @@ def evaluate_policy(
         percentile_stats.append(np.percentile(ep_returns, p))
 
     full_dist = ep_returns if get_full_dist is True else None
-    success = env.evaluate_success(paths, logger=eval_logger)
+    success = env.evaluate_success(paths, logger=None) ## Don't use the mj_envs logging function
+
+    if not eval_logger is None:
+        rwd_sparse = np.mean([np.mean(p['env_infos']['rwd_sparse']) for p in paths]) # return rwd/step
+        rwd_dense = np.mean([np.sum(p['env_infos']['rwd_dense'])/env.horizon for p in paths]) # return rwd/step
+        eval_logger.log_scalar('eval/rwd_sparse', rwd_sparse, step=epoch)
+        eval_logger.log_scalar('eval/rwd_dense', rwd_dense, step=epoch)
+        eval_logger.log_scalar('eval/success', success, step=epoch)
     return [base_stats, percentile_stats, full_dist], success
 
 @hydra.main(config_name="bc.yaml", config_path="config")
@@ -88,8 +99,19 @@ def main(job_data: DictConfig):
     if not os.path.exists(OUT_DIR+'/iterations'): os.mkdir(OUT_DIR+'/iterations')
     if not os.path.exists(OUT_DIR+'/logs'): os.mkdir(OUT_DIR+'/logs')
 
+    exp_name = OUT_DIR.split('/')[-1] ## TODO: Customizer for logging
     # Unpack args and make files for easy access
-    logger = DataLog()
+    #logger = DataLog()
+    logger = WandbLogger(
+        exp_name=exp_name,
+        config=job_data,
+        name=job_data['env_name'],
+        project=job_data['wandb_project'],
+        entity=job_data['wandb_entity'],
+        mode=job_data['wandb_mode'],
+    )
+
+
     ENV_NAME = job_data['env_name']
     EXP_FILE = OUT_DIR + '/job_data.yaml'
     SEED = job_data['seed']
@@ -127,6 +149,17 @@ def main(job_data: DictConfig):
     print(f"{bcolors.OKBLUE}Training BC{bcolors.ENDC}")
     bc_paths = paths_trace
     policy.to(job_data['device'])
+    evaluate_policy(
+                            policy=policy,
+                            env=env,
+                            epoch=0,
+                            num_episodes=job_data['eval_traj'],
+                            device='cpu', ## has to be one cpu??
+                            eval_logger=logger,
+                            seed=job_data['seed'] + 123,
+                            verbose=False,
+    )
+
     bc_agent = BC(
                     bc_paths,
                     policy,
@@ -144,10 +177,12 @@ def main(job_data: DictConfig):
     _, success_rate =  evaluate_policy(
                             policy=policy,
                             env=env,
+                            epoch=job_data['bc_init_epoch'],
                             num_episodes=job_data['eval_traj'],
                             device='cpu', ## has to be one cpu??
                             eval_logger=logger,
                             seed=job_data['seed'] + 123,
+                            verbose=True,
     )
 
     print(f"{bcolors.BOLD}{bcolors.OKGREEN}Success Rate: {success_rate}{bcolors.ENDC}")
