@@ -139,7 +139,7 @@ class MLP(torch.nn.Module):
     # Main functions
     # ============================================
     def get_action(self, observation):
-        assert type(observation) == np.ndarray
+        assert type(observation) == np.ndarray, "Currently passed observation type {}".format(type(observation))
         if self.device != 'cpu':
             print("Warning: get_action function should be used only for simulation.")
             print("Requires policy on CPU. Changing policy device to CPU.")

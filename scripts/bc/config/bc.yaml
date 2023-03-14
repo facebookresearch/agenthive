@@ -4,9 +4,13 @@ env_name: pen-v1
 data_file: /home/rutavms/data/robohive/dapg_replayed/dapg_replayed_pen-v0_demos.h5
 
 bc_init_epoch: 50
+bc_batch_size: 128
+bc_lr: 1e-4
 policy_size: [256, 256]
 init_log_std: -1.0
 min_log_std: -3.0
+
+eval_traj: 25
 
 hydra:
     run:
