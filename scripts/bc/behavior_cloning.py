@@ -9,9 +9,9 @@ import time as timer
 import torch
 from torch.autograd import Variable
 from logger import DataLog
-from tensor_utils import tensorize
 from tqdm import tqdm
 
+from utils import tensorize
 
 class BC:
     def __init__(self, expert_paths,
