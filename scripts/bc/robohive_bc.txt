@@ -1,0 +1,14 @@
+{
+# general inputs
+'env_name'      :   '',
+'seed'          :   121,
+'device'        :   'cuda',
+'data_file'     :   '/home/franka/dev/kathyz/mj_envs/mj_envs/logger/dapg_replayed/dapg_replayed_pen-v0_demos.h5',
+'bc_init_epoch' :   1000,
+'exp_notes'     :   'Example to illustrate MOReL.',
+
+# NPG params
+'policy_size'   :   (256, 256), # not used if loading BC policy. size is the same as BC # probably make it smaller, try 32, 64
+'init_log_std'  :   -1.0, # for policy, (try: (0.1, -.4) much smaller than original already) # (-0.5, -3)
+'min_log_std'   :   -3.0, # for policy, (> -1, try default -1, -2, -3)
+}
