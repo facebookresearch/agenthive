@@ -33,7 +33,7 @@ from tabulate import tabulate
 from gaussian_mlp import MLP
 # from mjrl.utils.gym_env import GymEnv
 from logger import DataLog
-from utils import control_seed, parse_overrides
+from misc import control_seed, parse_overrides
 
 from mj_envs.logger.grouped_datasets import Trace as Trace
 

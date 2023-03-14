@@ -11,7 +11,7 @@ from torch.autograd import Variable
 from logger import DataLog
 from tqdm import tqdm
 
-from utils import tensorize
+from misc import tensorize
 
 class BC:
     def __init__(self, expert_paths,

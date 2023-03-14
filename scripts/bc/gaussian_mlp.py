@@ -2,7 +2,7 @@ import numpy as np
 import torch
 from torch.autograd import Variable
 
-from utils import tensorize
+from misc import tensorize
 
 class MLP(torch.nn.Module):
     def __init__(self, env_spec=None,
