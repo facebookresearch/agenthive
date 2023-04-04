@@ -52,15 +52,14 @@ pip install git+https://github.com/pytorch-labs/tensordict
 # smoke test
 python -c "import functorch"
 
-# mj_envs
-#git clone -c submodule.mj_envs/sims/neuromuscular_sim.update=none --branch v0.4dev --recursive https://github.com/vikashplus/mj_envs.git third_party/mj_envs
-git clone -c submodule.mj_envs/sims/neuromuscular_sim.update=none --branch add_all_xmls --recursive https://github.com/vmoens/mj_envs.git third_party/mj_envs
-cd third_party/mj_envs
+#git clone -c submodule.robohive/sims/neuromuscular_sim.update=none --branch v0.4dev --recursive https://github.com/vikashplus/robohive.git third_party/robohive
+git clone -c submodule.robohive/sims/neuromuscular_sim.update=none --branch add_all_xmls --recursive https://github.com/vikashplus/robohive.git third_party/robohive
+cd third_party/robohive
 pip install .
 cd ../..
 
 # smoke test
-python -c "from mj_envs.envs import *"
+python -c "from robohive.envs import *"
 
 # torchrl
 git clone --branch main https://github.com/pytorch/rl.git third_party/torchrl
@@ -74,5 +73,5 @@ pip3 install -e .
 # smoke test
 printf "* Smoke test: torchrl\n"
 python -c "import torchrl"
-printf "* Smoke test: mj_envs\n"
-python -c "import mj_envs"
+printf "* Smoke test: robohive\n"
+python -c "import robohive"

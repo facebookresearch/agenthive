@@ -9,11 +9,11 @@ import os
 import warnings
 from pathlib import Path
 
-import mj_envs.envs.multi_task.substeps1
+import robohive.envs.multi_task.substeps1
 
-from mj_envs.envs.env_variants import register_env_variant
+from robohive.envs.env_variants import register_env_variant
 
-visual_obs_keys_wt = mj_envs.envs.multi_task.substeps1.visual_obs_keys_wt
+visual_obs_keys_wt = robohive.envs.multi_task.substeps1.visual_obs_keys_wt
 
 
 class set_directory(object):
@@ -41,11 +41,11 @@ class set_directory(object):
         return new_fun
 
 
-CURR_DIR = mj_envs.envs.multi_task.substeps1.CURR_DIR
-MODEL_PATH = mj_envs.envs.multi_task.substeps1.MODEL_PATH
-CONFIG_PATH = mj_envs.envs.multi_task.substeps1.CONFIG_PATH
-RANDOM_ENTRY_POINT = mj_envs.envs.multi_task.substeps1.RANDOM_ENTRY_POINT
-FIXED_ENTRY_POINT = mj_envs.envs.multi_task.substeps1.FIXED_ENTRY_POINT
+CURR_DIR = robohive.envs.multi_task.substeps1.CURR_DIR
+MODEL_PATH = robohive.envs.multi_task.substeps1.MODEL_PATH
+CONFIG_PATH = robohive.envs.multi_task.substeps1.CONFIG_PATH
+RANDOM_ENTRY_POINT = robohive.envs.multi_task.substeps1.RANDOM_ENTRY_POINT
+FIXED_ENTRY_POINT = robohive.envs.multi_task.substeps1.FIXED_ENTRY_POINT
 ENTRY_POINT = RANDOM_ENTRY_POINT
 
 override_keys = [

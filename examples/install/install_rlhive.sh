@@ -23,8 +23,8 @@ python3 -mpip install --pre torch torchvision torchaudio --extra-index-url https
 
 mkdir $module_path
 cd $module_path
-git clone -c submodule.mj_envs/sims/neuromuscular_sim.update=none --branch v0.4dev --recursive https://github.com/vikashplus/mj_envs.git mj_envs
-cd mj_envs
+git clone -c submodule.robohive/sims/neuromuscular_sim.update=none --branch v0.4dev --recursive https://github.com/vikashplus/robohive.git robohive
+cd robohive
 python3 -mpip install .  # one can also install it locally with the -e flag
 cd $here
 
