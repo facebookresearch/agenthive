@@ -54,12 +54,13 @@ class BC:
         if self.expert_paths == [] or self.expert_paths is None:
             in_shift, in_scale, out_shift, out_scale = None, None, None, None
         else:
+            print(type(self.expert_paths))
             if type(self.expert_paths) is list:
                 observations = np.concatenate([path["observations"] for path in self.expert_paths])
                 actions = np.concatenate([path["actions"] for path in self.expert_paths])
             else: # 'h5py._hl.files.File'
-                observations = np.concatenate([self.expert_paths[k]['observations'][0] for k in self.expert_paths.keys()])
-                actions = np.concatenate([self.expert_paths[k]['actions'][0] for k in self.expert_paths.keys()])
+                observations = np.concatenate([self.expert_paths[k]['observations'] for k in self.expert_paths.keys()])
+                actions = np.concatenate([self.expert_paths[k]['actions'] for k in self.expert_paths.keys()])
             in_shift, in_scale = np.mean(observations, axis=0), np.std(observations, axis=0)
             out_shift, out_scale = np.mean(actions, axis=0), np.std(actions, axis=0)
         return in_shift, in_scale, out_shift, out_scale
@@ -154,8 +155,8 @@ class BC:
 
     def train_h5(self, **kwargs):
         if not hasattr(self, 'data'):
-            observations = np.concatenate([self.expert_paths[k]['observations'][0] for k in self.expert_paths.keys()])
-            expert_actions = np.concatenate([self.expert_paths[k]['actions'][0] for k in self.expert_paths.keys()])
+            observations = np.concatenate([self.expert_paths[k]['observations'] for k in self.expert_paths.keys()])
+            expert_actions = np.concatenate([self.expert_paths[k]['actions'] for k in self.expert_paths.keys()])
             observations = tensorize(observations, device=self.policy.device)
             expert_actions = tensorize(expert_actions, self.policy.device)
             self.data = dict(observations=observations, expert_actions=expert_actions)

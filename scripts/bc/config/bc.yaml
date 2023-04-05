@@ -1,9 +1,12 @@
-seed: 121
+seed: 1
 device: 'cuda'
-env_name: pen-v1
-data_file: /home/rutavms/data/robohive/dapg_replayed/dapg_replayed_pen-v0_demos.h5
+encoder: r3m18
+cam_name: right_cam
+from_pixels: True
+env_name: FK1_Knob1OnRandom_v2d-v4
+data_file: /home/rutavms/data/robohive/FK1-v4/FK1_Knob1OnRandom_v2d-v4/seed1/best_policy20230402-003930_trace.h5
 
-bc_init_epoch: 50
+bc_epochs: 500
 bc_batch_size: 128
 bc_lr: 1e-4
 policy_size: [256, 256]
