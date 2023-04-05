@@ -135,7 +135,7 @@ class ObservationWrapper:
 def make_env(env_name, cam_name, encoder, from_pixels):
     if from_pixels:
         visual_keys = []
-        assert encoder in ["vc1s", "vc1l", "r3m18", "rrl18", "2d", "1d"]
+        assert encoder in ["vc1s", "vc1l", "r3m18", "rrl18", "rrl50", "r3m50", "2d", "1d"]
         if encoder == "1d" or encoder == "2d":
             visual_keys = [f'rgb:{cam_name}:84x84:{encoder}']
         else:
@@ -153,9 +153,10 @@ def main(job_data: DictConfig):
     if not os.path.exists(OUT_DIR+'/iterations'): os.mkdir(OUT_DIR+'/iterations')
     if not os.path.exists(OUT_DIR+'/logs'): os.mkdir(OUT_DIR+'/logs')
 
-    exp_name = OUT_DIR.split('/')[-1] ## TODO: Customizer for logging
+    #exp_name = OUT_DIR.split('/')[-1] ## TODO: Customizer for logging
     # Unpack args and make files for easy access
     #logger = DataLog()
+    exp_name = job_data['env_name'] + '_pixels' + job_data['from_pixels'] + '_' + job_data['encoder']
     logger = WandbLogger(
         exp_name=exp_name,
         config=job_data,
