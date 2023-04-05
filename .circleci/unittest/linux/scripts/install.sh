@@ -52,7 +52,8 @@ pip install git+https://github.com/pytorch-labs/tensordict
 # smoke test
 python -c "import functorch"
 
-git clone -c submodule.robohive/simhive/myo_sim.update=none --branch v0.4dev  --recursive https://github.com/vikashplus/robohive.git third_party/robohive
+#git clone -c submodule.robohive/simhive/myo_sim.update=none --branch v0.4dev  --recursive https://github.com/vikashplus/robohive.git third_party/robohive
+git clone --branch v0.5dev  --recursive https://github.com/vikashplus/robohive.git third_party/robohive
 cd third_party/robohive
 pip install .
 cd ../..
