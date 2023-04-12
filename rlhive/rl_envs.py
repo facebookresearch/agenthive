@@ -111,7 +111,8 @@ class RoboHiveEnv(GymEnv):
             device=self.device,
         )  # default
 
-        self.observation_spec = make_composite_from_td(self.rollout(2), self.observation_spec)
+        rollout = self.rollout(2).get("next").exclude("done", "reward")
+        self.observation_spec.update(make_composite_from_td(rollout))
 
     def set_from_pixels(self, from_pixels: bool) -> None:
         """Sets the from_pixels attribute to an existing environment.
