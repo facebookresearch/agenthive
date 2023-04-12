@@ -111,7 +111,7 @@ class RoboHiveEnv(GymEnv):
             device=self.device,
         )  # default
 
-        rollout = self.rollout(2).get("next").exclude("done", "reward")
+        rollout = self.rollout(2).get("next").exclude("done", "reward")[0]
         self.observation_spec.update(make_composite_from_td(rollout))
 
     def set_from_pixels(self, from_pixels: bool) -> None:
