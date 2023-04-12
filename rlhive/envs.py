@@ -89,6 +89,7 @@ def register_kitchen_envs():
         "kitchen_rdoor_open-v3",
         "kitchen_micro_close-v3",
         "kitchen_micro_open-v3",
+        "FK1_RelaxFixed-v4",
         # "kitchen_close-v3",
     ]
 

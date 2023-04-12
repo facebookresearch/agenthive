@@ -157,8 +157,8 @@ def main():
         collector_class=collector_class,
         num_workers_per_collector=args.num_workers,
         collector_kwargs={device_str: "cuda:0" if slurm_gpus_per_node else "cpu"},
-        storing_device="cuda:0" if slurm_gpus_per_node else "cpu",
-        backend="nccl" if slurm_gpus_per_node else "gloo",
+        storing_device="cpu",
+        backend="gloo",
         sync=sync,
     )
     counter = 0

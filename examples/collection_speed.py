@@ -13,7 +13,7 @@ import time
 import tqdm
 
 from rlhive.rl_envs import RoboHiveEnv
-from torchrl.collectors.distributed.rpc import RPCDataCollector
+from torchrl.collectors.distributed import RPCDataCollector, DistributedDataCollector
 from torchrl.collectors.collectors import MultiaSyncDataCollector, RandomPolicy
 from torchrl.envs import EnvCreator, ParallelEnv, R3MTransform, TransformedEnv
 
@@ -31,10 +31,10 @@ if __name__ == "__main__":
     if args.num_workers > 1:
         penv = ParallelEnv(
             args.num_workers,
-            EnvCreator(lambda: RoboHiveEnv(args.env_name, device="cuda:0")),
+            EnvCreator(lambda: RoboHiveEnv(args.env_name, device="cpu")),
         )
     else:
-        penv = RoboHiveEnv(args.env_name, device="cuda:0")
+        penv = RoboHiveEnv(args.env_name, device="cpu")
     if "visual" in args.env_name:
         if args.r3m:
             tenv = TransformedEnv(
@@ -49,7 +49,7 @@ if __name__ == "__main__":
         #                               num_iter=1000)
     policy = RandomPolicy(tenv.action_spec)  # some random policy
 
-    device = "cuda:0"
+    device = "cpu"
 
     slurm_conf = {
         "timeout_min": 100,
@@ -58,7 +58,7 @@ if __name__ == "__main__":
         "slurm_gpus_per_task": 1,
     }
 
-    collector = RPCDataCollector(
+    collector = DistributedDataCollector(
         [tenv] * args.num_collectors,
         policy=policy,
         frames_per_batch=args.frames_per_batch,
@@ -66,8 +66,9 @@ if __name__ == "__main__":
         storing_device=device,
         split_trajs=False,
         sync=True,
-        launcher="submitit",
+        launcher="mp",
         slurm_kwargs=slurm_conf,
+        backend="gloo",
     )
     pbar = tqdm.tqdm(total=args.total_frames)
     for i, data in enumerate(collector):
