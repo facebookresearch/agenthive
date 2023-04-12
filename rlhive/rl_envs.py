@@ -10,29 +10,10 @@ from torchrl.data import BoundedTensorSpec, CompositeSpec, UnboundedContinuousTe
 from torchrl.envs.libs.gym import _gym_to_torchrl_spec_transform, _has_gym, GymEnv
 from torchrl.envs.transforms import CatTensors, Compose, R3MTransform, TransformedEnv
 from torchrl.trainers.helpers.envs import LIBS
+from torchrl.envs.utils import make_composite_from_td
 
 if _has_gym:
     import gym
-
-
-def make_extra_spec(tensordict, obsspec: CompositeSpec):
-    if tensordict.shape:
-        tensordict = tensordict.view(-1)[0]
-    c = CompositeSpec()
-    for key, value in tensordict.items():
-        if obsspec is not None and (
-            key in ("next", "action", "done", "reward") or key in obsspec.keys()
-        ):
-            continue
-        if isinstance(value, TensorDictBase):
-            spec = make_extra_spec(value, None)
-        else:
-            spec = UnboundedContinuousTensorSpec(shape=value.shape, dtype=value.dtype)
-        c[key] = spec
-    if obsspec is not None:
-        obsspec.update(c)
-        return obsspec
-    return c
 
 
 class RoboHiveEnv(GymEnv):
@@ -130,7 +111,7 @@ class RoboHiveEnv(GymEnv):
             device=self.device,
         )  # default
 
-        self.observation_spec = make_extra_spec(self.rollout(2), self.observation_spec)
+        self.observation_spec = make_composite_from_td(self.rollout(2), self.observation_spec)
 
     def set_from_pixels(self, from_pixels: bool) -> None:
         """Sets the from_pixels attribute to an existing environment.
