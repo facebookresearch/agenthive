@@ -106,7 +106,7 @@ def register_kitchen_envs():
             new_env_name = "visual_" + env
             register_env_variant(
                 env,
-                variants={"obs_keys_wt": obs_keys_wt, "visual_keys": visual_obs_keys},
+                variants={"obs_keys_wt": obs_keys_wt, "visual_keys": list(visual_obs_keys.keys())},
                 variant_id=new_env_name,
                 override_keys=override_keys,
             )
