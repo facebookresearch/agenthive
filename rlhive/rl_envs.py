@@ -49,7 +49,7 @@ class RoboHiveEnv(GymEnv):
                 **kwargs,
             )
             self.wrapper_frame_skip = 1
-            from_pixels = len(env.visual_keys)
+            from_pixels = bool(len(env.visual_keys))
         except TypeError as err:
             if "unexpected keyword argument 'frameskip" not in str(err):
                 raise TypeError(err)
@@ -66,7 +66,7 @@ class RoboHiveEnv(GymEnv):
 
     def _make_specs(self, env: "gym.Env") -> None:
         if self.from_pixels:
-            num_cams = len([key for key in env.obs_keys if key.startswith("rgb")])
+            num_cams = len(env.visual_keys)
             n_pix = 224 * 224 * 3 * num_cams
             env.observation_space = gym.spaces.Box(
                 -8 * np.ones(env.obs_dim - n_pix),
