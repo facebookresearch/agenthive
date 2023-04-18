@@ -98,8 +98,8 @@ def register_kitchen_envs():
         "end_effector": 1.0,
     }
     visual_obs_keys = {
-        "right_cam:224x224:2d": 1.0,
-        "left_cam:224x224:2d": 1.0,
+        "rgb:right_cam:224x224:2d": 1.0,
+        "rgb:left_cam:224x224:2d": 1.0,
     }
     for env in env_list:
         try:
