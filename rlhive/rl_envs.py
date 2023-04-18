@@ -67,12 +67,12 @@ class RoboHiveEnv(GymEnv):
     def _make_specs(self, env: "gym.Env") -> None:
         if self.from_pixels:
             num_cams = len(env.visual_keys)
-            n_pix = 224 * 224 * 3 * num_cams
-            env.observation_space = gym.spaces.Box(
-                -8 * np.ones(env.obs_dim - n_pix),
-                8 * np.ones(env.obs_dim - n_pix),
-                dtype=np.float32,
-            )
+            # n_pix = 224 * 224 * 3 * num_cams
+            # env.observation_space = gym.spaces.Box(
+            #     -8 * np.ones(env.obs_dim - n_pix),
+            #     8 * np.ones(env.obs_dim - n_pix),
+            #     dtype=np.float32,
+            # )
         self.action_spec = _gym_to_torchrl_spec_transform(
             env.action_space, device=self.device
         )
