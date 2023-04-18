@@ -9,30 +9,11 @@ from tensordict.tensordict import make_tensordict, TensorDictBase
 from torchrl.data import BoundedTensorSpec, CompositeSpec, UnboundedContinuousTensorSpec
 from torchrl.envs.libs.gym import _gym_to_torchrl_spec_transform, _has_gym, GymEnv
 from torchrl.envs.transforms import CatTensors, Compose, R3MTransform, TransformedEnv
+from torchrl.envs.utils import make_composite_from_td
 from torchrl.trainers.helpers.envs import LIBS
 
 if _has_gym:
     import gym
-
-
-def make_extra_spec(tensordict, obsspec: CompositeSpec):
-    if tensordict.shape:
-        tensordict = tensordict.view(-1)[0]
-    c = CompositeSpec()
-    for key, value in tensordict.items():
-        if obsspec is not None and (
-            key in ("next", "action", "done", "reward") or key in obsspec.keys()
-        ):
-            continue
-        if isinstance(value, TensorDictBase):
-            spec = make_extra_spec(value, None)
-        else:
-            spec = UnboundedContinuousTensorSpec(shape=value.shape, dtype=value.dtype)
-        c[key] = spec
-    if obsspec is not None:
-        obsspec.update(c)
-        return obsspec
-    return c
 
 
 class RoboHiveEnv(GymEnv):
@@ -68,7 +49,7 @@ class RoboHiveEnv(GymEnv):
                 **kwargs,
             )
             self.wrapper_frame_skip = 1
-            from_pixels = any("rgb" in key for key in env.obs_keys)
+            from_pixels = bool(len(env.visual_keys))
         except TypeError as err:
             if "unexpected keyword argument 'frameskip" not in str(err):
                 raise TypeError(err)
@@ -85,13 +66,13 @@ class RoboHiveEnv(GymEnv):
 
     def _make_specs(self, env: "gym.Env") -> None:
         if self.from_pixels:
-            num_cams = len([key for key in env.obs_keys if key.startswith("rgb")])
-            n_pix = 224 * 224 * 3 * num_cams
-            env.observation_space = gym.spaces.Box(
-                -8 * np.ones(env.obs_dim - n_pix),
-                8 * np.ones(env.obs_dim - n_pix),
-                dtype=np.float32,
-            )
+            num_cams = len(env.visual_keys)
+            # n_pix = 224 * 224 * 3 * num_cams
+            # env.observation_space = gym.spaces.Box(
+            #     -8 * np.ones(env.obs_dim - n_pix),
+            #     8 * np.ones(env.obs_dim - n_pix),
+            #     dtype=np.float32,
+            # )
         self.action_spec = _gym_to_torchrl_spec_transform(
             env.action_space, device=self.device
         )
@@ -130,7 +111,8 @@ class RoboHiveEnv(GymEnv):
             device=self.device,
         )  # default
 
-        self.observation_spec = make_extra_spec(self.rollout(2), self.observation_spec)
+        rollout = self.rollout(2).get("next").exclude("done", "reward")[0]
+        self.observation_spec.update(make_composite_from_td(rollout))
 
     def set_from_pixels(self, from_pixels: bool) -> None:
         """Sets the from_pixels attribute to an existing environment.
@@ -147,6 +129,7 @@ class RoboHiveEnv(GymEnv):
     def read_obs(self, observation):
         # the info is missing from the reset
         observations = self.env.obs_dict
+        visual = self.env.get_exteroception()
         try:
             del observations["t"]
         except KeyError:
@@ -154,6 +137,7 @@ class RoboHiveEnv(GymEnv):
         # recover vec
         obsvec = []
         pixel_list = []
+        observations.update(visual)
         for key in observations:
             if key.startswith("rgb"):
                 pix = observations[key]

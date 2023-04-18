@@ -9,11 +9,11 @@ import os
 import warnings
 from pathlib import Path
 
-import mj_envs.envs.multi_task.substeps1
+import robohive.envs.multi_task.substeps1
 
-from mj_envs.envs.env_variants import register_env_variant
+from robohive.envs.env_variants import register_env_variant
 
-visual_obs_keys_wt = mj_envs.envs.multi_task.substeps1.visual_obs_keys_wt
+visual_obs_keys_wt = robohive.envs.multi_task.substeps1.visual_obs_keys_wt
 
 
 class set_directory(object):
@@ -41,11 +41,11 @@ class set_directory(object):
         return new_fun
 
 
-CURR_DIR = mj_envs.envs.multi_task.substeps1.CURR_DIR
-MODEL_PATH = mj_envs.envs.multi_task.substeps1.MODEL_PATH
-CONFIG_PATH = mj_envs.envs.multi_task.substeps1.CONFIG_PATH
-RANDOM_ENTRY_POINT = mj_envs.envs.multi_task.substeps1.RANDOM_ENTRY_POINT
-FIXED_ENTRY_POINT = mj_envs.envs.multi_task.substeps1.FIXED_ENTRY_POINT
+CURR_DIR = robohive.envs.multi_task.substeps1.CURR_DIR
+MODEL_PATH = robohive.envs.multi_task.substeps1.MODEL_PATH
+CONFIG_PATH = robohive.envs.multi_task.substeps1.CONFIG_PATH
+RANDOM_ENTRY_POINT = robohive.envs.multi_task.substeps1.RANDOM_ENTRY_POINT
+FIXED_ENTRY_POINT = robohive.envs.multi_task.substeps1.FIXED_ENTRY_POINT
 ENTRY_POINT = RANDOM_ENTRY_POINT
 
 override_keys = [
@@ -89,12 +89,15 @@ def register_kitchen_envs():
         "kitchen_rdoor_open-v3",
         "kitchen_micro_close-v3",
         "kitchen_micro_open-v3",
+        "FK1_RelaxFixed-v4",
         # "kitchen_close-v3",
     ]
 
-    visual_obs_keys_wt = {
+    obs_keys_wt = {
         "robot_jnt": 1.0,
         "end_effector": 1.0,
+    }
+    visual_obs_keys = {
         "rgb:right_cam:224x224:2d": 1.0,
         "rgb:left_cam:224x224:2d": 1.0,
     }
@@ -103,7 +106,7 @@ def register_kitchen_envs():
             new_env_name = "visual_" + env
             register_env_variant(
                 env,
-                variants={"obs_keys_wt": visual_obs_keys_wt},
+                variants={"obs_keys_wt": obs_keys_wt, "visual_keys": list(visual_obs_keys.keys())},
                 variant_id=new_env_name,
                 override_keys=override_keys,
             )
@@ -126,9 +129,11 @@ def register_franka_envs():
     ]
 
     # Franka Appliance ======================================================================
-    visual_obs_keys_wt = {
+    obs_keys_wt = {
         "robot_jnt": 1.0,
         "end_effector": 1.0,
+    }
+    visual_obs_keys = {
         "rgb:right_cam:224x224:2d": 1.0,
         "rgb:left_cam:224x224:2d": 1.0,
     }
@@ -137,7 +142,7 @@ def register_franka_envs():
             new_env_name = "visual_" + env
             register_env_variant(
                 env,
-                variants={"obs_keys_wt": visual_obs_keys_wt},
+                variants={"obs_keys_wt": obs_keys_wt, "visual_keys": visual_obs_keys},
                 variant_id=new_env_name,
                 override_keys=override_keys,
             )
@@ -152,6 +157,10 @@ def register_hand_envs():
     print("RLHive:> Registering Arm Envs")
     env_list = ["door-v1", "hammer-v1", "pen-v1", "relocate-v1"]
 
+    visual_obs_keys = [
+        "rgb:vil_camera:224x224:2d",
+        "rgb:fixed:224x224:2d",
+    ]
     # Hand Manipulation Suite ======================================================================
     for env in env_list:
         try:
@@ -161,9 +170,8 @@ def register_hand_envs():
                 variants={
                     "obs_keys": [
                         "hand_jnt",
-                        "rgb:vil_camera:224x224:2d",
-                        "rgb:fixed:224x224:2d",
-                    ]
+                    ],
+                    "visual_keys": visual_obs_keys,
                 },
                 variant_id=new_env_name,
             )
@@ -178,6 +186,10 @@ def register_myo_envs():
     print("RLHive:> Registering Myo Envs")
     env_list = ["motorFingerReachFixed-v0"]
 
+    visual_keys = [
+        "rgb:vil_camera:224x224:2d",
+        "rgb:fixed:224x224:2d",
+    ]
     # Hand Manipulation Suite ======================================================================
     for env in env_list:
         try:
@@ -187,9 +199,8 @@ def register_myo_envs():
                 variants={
                     "obs_keys": [
                         "hand_jnt",
-                        "rgb:vil_camera:224x224:2d",
-                        "rgb:fixed:224x224:2d",
-                    ]
+                    ],
+                    "visual_keys": visual_keys,
                 },
                 variant_id=new_env_name,
             )

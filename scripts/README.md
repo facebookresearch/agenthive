@@ -10,7 +10,7 @@ pip install -e .
 
 ## Testing installation
 ```
-python -c "import mj_envs"
+python -c "import robohive"
 MUJOCO_GL=egl sim_backend=MUJOCO python -c """
 from rlhive.rl_envs import RoboHiveEnv
 env_name = 'visual_franka_slide_random-v3'
