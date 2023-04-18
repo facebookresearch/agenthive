@@ -93,18 +93,20 @@ def register_kitchen_envs():
         # "kitchen_close-v3",
     ]
 
-    visual_obs_keys_wt = {
+    obs_keys_wt = {
         "robot_jnt": 1.0,
         "end_effector": 1.0,
-        "rgb:right_cam:224x224:2d": 1.0,
-        "rgb:left_cam:224x224:2d": 1.0,
+    }
+    visual_obs_keys = {
+        "right_cam:224x224:2d": 1.0,
+        "left_cam:224x224:2d": 1.0,
     }
     for env in env_list:
         try:
             new_env_name = "visual_" + env
             register_env_variant(
                 env,
-                variants={"obs_keys_wt": visual_obs_keys_wt},
+                variants={"obs_keys_wt": obs_keys_wt, "visual_keys": visual_obs_keys},
                 variant_id=new_env_name,
                 override_keys=override_keys,
             )
@@ -127,9 +129,11 @@ def register_franka_envs():
     ]
 
     # Franka Appliance ======================================================================
-    visual_obs_keys_wt = {
+    obs_keys_wt = {
         "robot_jnt": 1.0,
         "end_effector": 1.0,
+    }
+    visual_obs_keys = {
         "rgb:right_cam:224x224:2d": 1.0,
         "rgb:left_cam:224x224:2d": 1.0,
     }
@@ -138,7 +142,7 @@ def register_franka_envs():
             new_env_name = "visual_" + env
             register_env_variant(
                 env,
-                variants={"obs_keys_wt": visual_obs_keys_wt},
+                variants={"obs_keys_wt": obs_keys_wt, "visual_keys": visual_obs_keys},
                 variant_id=new_env_name,
                 override_keys=override_keys,
             )
@@ -153,6 +157,10 @@ def register_hand_envs():
     print("RLHive:> Registering Arm Envs")
     env_list = ["door-v1", "hammer-v1", "pen-v1", "relocate-v1"]
 
+    visual_obs_keys = [
+        "rgb:vil_camera:224x224:2d",
+        "rgb:fixed:224x224:2d",
+    ]
     # Hand Manipulation Suite ======================================================================
     for env in env_list:
         try:
@@ -162,9 +170,8 @@ def register_hand_envs():
                 variants={
                     "obs_keys": [
                         "hand_jnt",
-                        "rgb:vil_camera:224x224:2d",
-                        "rgb:fixed:224x224:2d",
-                    ]
+                    ],
+                    "visual_keys": visual_obs_keys,
                 },
                 variant_id=new_env_name,
             )
@@ -179,6 +186,10 @@ def register_myo_envs():
     print("RLHive:> Registering Myo Envs")
     env_list = ["motorFingerReachFixed-v0"]
 
+    visual_keys = [
+        "rgb:vil_camera:224x224:2d",
+        "rgb:fixed:224x224:2d",
+    ]
     # Hand Manipulation Suite ======================================================================
     for env in env_list:
         try:
@@ -188,9 +199,8 @@ def register_myo_envs():
                 variants={
                     "obs_keys": [
                         "hand_jnt",
-                        "rgb:vil_camera:224x224:2d",
-                        "rgb:fixed:224x224:2d",
-                    ]
+                    ],
+                    "visual_keys": visual_keys,
                 },
                 variant_id=new_env_name,
             )

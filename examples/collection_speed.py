@@ -13,8 +13,8 @@ import time
 import tqdm
 
 from rlhive.rl_envs import RoboHiveEnv
-from torchrl.collectors.distributed import RPCDataCollector, DistributedDataCollector
 from torchrl.collectors.collectors import MultiaSyncDataCollector, RandomPolicy
+from torchrl.collectors.distributed import DistributedDataCollector, RPCDataCollector
 from torchrl.envs import EnvCreator, ParallelEnv, R3MTransform, TransformedEnv
 
 parser = argparse.ArgumentParser()

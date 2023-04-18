@@ -9,8 +9,8 @@ from tensordict.tensordict import make_tensordict, TensorDictBase
 from torchrl.data import BoundedTensorSpec, CompositeSpec, UnboundedContinuousTensorSpec
 from torchrl.envs.libs.gym import _gym_to_torchrl_spec_transform, _has_gym, GymEnv
 from torchrl.envs.transforms import CatTensors, Compose, R3MTransform, TransformedEnv
-from torchrl.trainers.helpers.envs import LIBS
 from torchrl.envs.utils import make_composite_from_td
+from torchrl.trainers.helpers.envs import LIBS
 
 if _has_gym:
     import gym

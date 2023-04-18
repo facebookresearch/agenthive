@@ -82,6 +82,12 @@ parser.add_argument(
     default="1:00:00",
     help="Timeout for the nodes",
 )
+parser.add_argument(
+    "--backend",
+    "-b",
+    default="gloo",
+    help="Backend for the collector",
+)
 
 parser.add_argument("--env_name", default="franka_micro_random-v3")
 parser.add_argument("--r3m", action="store_true")
@@ -90,6 +96,7 @@ args = parser.parse_args()
 
 slurm_gpus_per_node = args.gpus_per_node
 slurm_time = args.time
+backend = args.backend
 
 DEFAULT_SLURM_CONF["slurm_gpus_per_node"] = slurm_gpus_per_node
 DEFAULT_SLURM_CONF["slurm_time"] = slurm_time
@@ -104,49 +111,56 @@ num_workers = args.num_workers
 sync = args.sync
 total_frames = args.total_frames
 frames_per_batch = args.frames_per_batch
+device = "cpu" if backend == "gloo" else "cuda:0"
 
 
 def make_env(args):
     def constructor():
-        from torchrl.envs import EnvCreator, TransformedEnv, R3MTransform, \
-            ParallelEnv
         from rlhive import RoboHiveEnv
+        from torchrl.envs import EnvCreator, ParallelEnv, R3MTransform, TransformedEnv
+        from torchrl.envs.libs.gym import GymEnv
+
         if args.num_workers > 1:
             penv = ParallelEnv(
                 args.num_workers,
-                EnvCreator(lambda: RoboHiveEnv(args.env_name, device="cuda:0")),
+                # EnvCreator(lambda: RoboHiveEnv(args.env_name, device="cuda:0")),
+                EnvCreator(lambda: GymEnv("Pendulum-v0", device="cuda:0")),
             )
         else:
-            penv = RoboHiveEnv(args.env_name, device="cuda:0")
+            # penv = RoboHiveEnv(args.env_name, device="cuda:0")
+            penv = GymEnv("Pendulum-v0", device="cuda:0")
         if "visual" in args.env_name:
             if args.r3m:
                 tenv = TransformedEnv(
                     penv,
-                    R3MTransform(in_keys=["pixels"], download=True, model_name="resnet50"),
+                    R3MTransform(
+                        in_keys=["pixels"], download=True, model_name="resnet50"
+                    ),
                 )
             else:
                 tenv = penv
         else:
             tenv = penv
         return tenv
+
     return constructor
+
 
 @submitit_delayed_launcher(
     num_jobs=num_jobs,
-    backend="nccl" if slurm_gpus_per_node else "gloo",
+    backend=backend,
     tcpport=tcp_port,
 )
 def main():
     assert torch.cuda.device_count()
-    from torchrl.collectors.distributed.generic import DistributedDataCollector
-    from torchrl.envs import EnvCreator
     import tqdm
 
     from torchrl.collectors import SyncDataCollector
     from torchrl.collectors.collectors import RandomPolicy
+    from torchrl.collectors.distributed.generic import DistributedDataCollector
+    from torchrl.envs import EnvCreator
 
     collector_class = SyncDataCollector
-    device_str = "device"
     collector = DistributedDataCollector(
         [EnvCreator(make_env(args))] * num_jobs,
         policy=RandomPolicy(make_env(args)().action_spec),
@@ -156,9 +170,12 @@ def main():
         tcp_port=tcp_port,
         collector_class=collector_class,
         num_workers_per_collector=args.num_workers,
-        collector_kwargs={device_str: "cuda:0" if slurm_gpus_per_node else "cpu"},
+        collector_kwargs={
+            "device": "cuda:0" if slurm_gpus_per_node else "cpu",
+            "storing_device": device,
+        },
         storing_device="cpu",
-        backend="gloo",
+        backend=backend,
         sync=sync,
     )
     counter = 0
