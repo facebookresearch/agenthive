@@ -49,7 +49,7 @@ class RoboHiveEnv(GymEnv):
                 **kwargs,
             )
             self.wrapper_frame_skip = 1
-            from_pixels = any("rgb" in key for key in env.obs_keys)
+            from_pixels = len(env.visual_keys)
         except TypeError as err:
             if "unexpected keyword argument 'frameskip" not in str(err):
                 raise TypeError(err)
