@@ -14,12 +14,14 @@ init_log_std: -1.0
 min_log_std: -3.0
 
 eval_traj: 25
+eval_every_n: 50
+use_bmlp: true
 wandb_entity: "rutavms"
 wandb_mode: "online"
 wandb_project: "temp"
 
 hydra:
     run:
-        dir: experiments/${env_name}_pixel${from_pixels}_${cam_name}_seed${seed}
+        dir: experiments/${env_name}_bmlp${use_bmlp}_pixel${from_pixels}_${cam_name}_seed${seed}
     job:
         chdir: True

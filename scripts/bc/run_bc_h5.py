@@ -18,6 +18,7 @@ import numpy as np
 from omegaconf import DictConfig, OmegaConf
 
 from gaussian_mlp import MLP
+from batch_norm_mlp import BatchNormMLP
 from behavior_cloning import BC
 from misc import control_seed, NpEncoder, bcolors, \
         stack_tensor_dict_list
@@ -147,20 +148,25 @@ def make_env(env_name, cam_name, encoder, from_pixels):
 
 @hydra.main(config_name="bc.yaml", config_path="config")
 def main(job_data: DictConfig):
+    OmegaConf.resolve(job_data)
+    job_data['policy_size'] = tuple(job_data['policy_size'])
     exp_start  = time.time()
     OUT_DIR = os.getcwd()
     if not os.path.exists(OUT_DIR): os.mkdir(OUT_DIR)
     if not os.path.exists(OUT_DIR+'/iterations'): os.mkdir(OUT_DIR+'/iterations')
     if not os.path.exists(OUT_DIR+'/logs'): os.mkdir(OUT_DIR+'/logs')
 
+    if job_data['from_pixels'] == False:
+        job_data['env_name'] = job_data['env_name'].replace('_v2d', '')
+
     #exp_name = OUT_DIR.split('/')[-1] ## TODO: Customizer for logging
     # Unpack args and make files for easy access
     #logger = DataLog()
-    exp_name = job_data['env_name'] + '_pixels' + job_data['from_pixels'] + '_' + job_data['encoder']
+    exp_name = job_data['env_name'] + '_bmlp' + str(job_data['use_bmlp']) + '_pixels' + str(job_data['from_pixels']) + '_' + job_data['encoder']
     logger = WandbLogger(
         exp_name=exp_name,
         config=job_data,
-        name=job_data['env_name'],
+        name=exp_name,
         project=job_data['wandb_project'],
         entity=job_data['wandb_entity'],
         mode=job_data['wandb_mode'],
@@ -205,33 +211,53 @@ def main(job_data: DictConfig):
             init_state_dict[key] = value[0]
         env.set_env_state(init_state_dict)
         obs = env.get_obs()
-        for step in range(traj_len):
+        for step in range(traj_len-1):
             next_obs, reward, done, env_info = env.step(path["actions"][step])
             ep_reward += reward
             obs_list.append(obs)
             obs = next_obs
         t1 = time.time()
         obs_np = np.stack(obs_list, axis=0)
-        path_dict['observations'] = obs_np[:-1]
+        path_dict['observations'] = obs_np # [:-1]
         path_dict['actions'] = path['actions'][()][:-1]
+        path_dict['env_infos'] = {'solved': path['env_infos']['solved'][()]}
         print(f"Time to convert one trajectory: {(t1-t0)/60:4.2f}")
         print("Converted episode reward:", ep_reward)
         print("Original episode reward:", np.sum(path["rewards"]))
         print(key, path_dict['observations'].shape, path_dict['actions'].shape)
         bc_paths.append(path_dict)
 
+    expert_success = env.evaluate_success(bc_paths)
+    print(f"{bcolors.BOLD}{bcolors.OKGREEN}{exp_name} {bcolors.ENDC}")
+    print(f"{bcolors.BOLD}{bcolors.OKGREEN}Expert Success Rate: {expert_success}. {bcolors.ENDC}")
+
     observation_dim = bc_paths[0]['observations'].shape[-1]
     action_dim = bc_paths[0]['actions'].shape[-1]
     print(f'Policy obs dim {observation_dim} act dim {action_dim}')
-    policy = MLP(
-                    None,
-                    seed=SEED,
-                    action_dim=action_dim,
-                    observation_dim=observation_dim,
-                    hidden_sizes=job_data['policy_size'],
-                    init_log_std=job_data['init_log_std'],
-                    min_log_std=job_data['min_log_std'],
-    )
+    set_transforms = True
+    if job_data['use_bmlp']:
+        policy = BatchNormMLP(
+                        None,
+                        seed=SEED,
+                        action_dim=action_dim,
+                        observation_dim=observation_dim,
+                        hidden_sizes=tuple(job_data['policy_size']),
+                        init_log_std=job_data['init_log_std'],
+                        min_log_std=job_data['min_log_std'],
+                        device=job_data['device'],
+        )
+        set_transforms = False
+    else:
+        policy = MLP(
+                        None,
+                        seed=SEED,
+                        action_dim=action_dim,
+                        observation_dim=observation_dim,
+                        hidden_sizes=job_data['policy_size'],
+                        init_log_std=job_data['init_log_std'],
+                        min_log_std=job_data['min_log_std'],
+        )
+        set_transforms = True
 
     # ===============================================================================
     # Model training
@@ -252,33 +278,41 @@ def main(job_data: DictConfig):
     bc_agent = BC(
                     bc_paths,
                     policy,
-                    epochs=job_data['bc_epochs'],
+                    epochs=job_data['eval_every_n'],
                     batch_size=job_data['bc_batch_size'],
                     lr=job_data['bc_lr'],
                     loss_type='MSE',
                     save_logs=True,
                     logger=logger,
-                    set_transforms=True
+                    set_transforms=set_transforms,
     )
-    bc_agent.train()
-    # bc_agent.train_h5()
 
-    _, success_rate =  evaluate_policy(
-                            policy=policy,
-                            env=env,
-                            epoch=job_data['bc_epochs'],
-                            num_episodes=job_data['eval_traj'],
-                            device='cpu', ## has to be one cpu??
-                            eval_logger=logger,
-                            seed=job_data['seed'] + 123,
-                            verbose=True,
-    )
+    for ind in range(0, job_data['bc_epochs'], job_data['eval_every_n']):
+        policy.train()
+        bc_agent.train()
+        # bc_agent.train_h5()
+
+        policy.eval()
+        _, success_rate =  evaluate_policy(
+                                policy=policy,
+                                env=env,
+                                epoch=ind+job_data['eval_every_n'],
+                                num_episodes=job_data['eval_traj'],
+                                device='cpu', ## has to be one cpu??
+                                eval_logger=logger,
+                                seed=job_data['seed'] + 123,
+                                verbose=True,
+        )
+        policy.to(job_data['device'])
+        exp_end = time.time()
+        print(f"{bcolors.BOLD}{bcolors.OKGREEN}Success Rate: {success_rate}. Time: {(exp_end - exp_start)/60:4.2f} minutes.{bcolors.ENDC}")
 
     exp_end = time.time()
     print(f"{bcolors.BOLD}{bcolors.OKGREEN}Success Rate: {success_rate}. Time: {(exp_end - exp_start)/60:4.2f} minutes.{bcolors.ENDC}")
 
     # pickle.dump(bc_agent, open(OUT_DIR + '/iterations/agent_final.pickle', 'wb'))
     pickle.dump(policy, open(OUT_DIR + '/iterations/policy_final.pickle', 'wb'))
+    wandb.finish()
 
 if __name__ == '__main__':
     main()
