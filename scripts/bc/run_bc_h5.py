@@ -15,7 +15,7 @@ import gym
 import torch
 import wandb
 import numpy as np
-from omegaconf import DictConfig, OmegaConf
+from omegaconf import DictConfig, OmegaConf, ListConfig
 
 from gaussian_mlp import MLP
 from batch_norm_mlp import BatchNormMLP
@@ -101,8 +101,8 @@ class ObservationWrapper:
     def __init__(self, env_name, visual_keys, encoder):
         self.env = gym.make(env_name, visual_keys=visual_keys)
         self.horizon = self.env.horizon
-        assert len(self.env.visual_keys) == 1 or len(self.env.visual_keys) == 0, f"Wrapper supports only envs with \
-                        no visual keys or one. Current visual keys {self.env.visual_keys}"
+        #assert len(self.env.visual_keys) == 1 or len(self.env.visual_keys) == 0, f"Wrapper supports only envs with \
+        #                no visual keys or one. Current visual keys {self.env.visual_keys}"
 
 
     def reset(self, **kwargs):
@@ -116,9 +116,14 @@ class ObservationWrapper:
     def get_obs(self, observation=None):
         if len(self.env.visual_keys) > 0:
             visual_obs = self.env.get_exteroception()
-            visual_obs = visual_obs[self.env.visual_keys[0]].reshape(-1)
+            final_visual_obs = None
+            for key in self.env.visual_keys:
+                if final_visual_obs is None:
+                    final_visual_obs = visual_obs[key]
+                else:
+                    final_visual_obs = np.concatenate((final_visual_obs, visual_obs[key]), axis=-1)
             _, proprio_vec, _ = self.env.get_proprioception()
-            observation = np.concatenate((visual_obs, proprio_vec))
+            observation = np.concatenate((final_visual_obs, proprio_vec))
         else:
             observation = self.env.get_obs() if observation is None else observation
         return observation
@@ -140,7 +145,14 @@ def make_env(env_name, cam_name, encoder, from_pixels):
         if encoder == "1d" or encoder == "2d":
             visual_keys = [f'rgb:{cam_name}:84x84:{encoder}']
         else:
-            visual_keys = [f'rgb:{cam_name}:224x224:{encoder}']
+            # cam_name is a list of cameras
+            if type(cam_name) == ListConfig:
+                visual_keys = []
+                for cam in cam_name:
+                    visual_keys.append(f'rgb:{cam}:224x224:{encoder}')
+            else:
+                visual_keys = [f'rgb:{cam_name}:224x224:{encoder}']
+            print(f"Using visual keys {visual_keys}")
         env = ObservationWrapper(env_name, visual_keys=visual_keys, encoder=encoder)
     else:
         env = gym.make(env_name)
