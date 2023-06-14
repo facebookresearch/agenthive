@@ -1,6 +1,7 @@
 # [AgentHive](https://github.com/facebookresearch/agenthive/tree/dev)
 
-AgentHive provides the primitives and helpers for a seamless usage of robohive within TorchRL.
+AgentHive provides the primitives and helpers for a seamless usage of RoboHive within TorchRL.  
+(This code is a subset of the complete [AgentHive](https://github.com/facebookresearch/agenthive/tree/dev) repository for reproducibility)
 
 ## Installation
 1. Follow the [installation instructions](https://github.com/facebookresearch/agenthive/blob/dev/GET_STARTED.md) for AgentHive.  
