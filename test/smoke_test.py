@@ -1,3 +1,3 @@
-import mj_envs
+import robohive
 import torchrl
 from rlhive import RoboHiveEnv

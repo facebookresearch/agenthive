@@ -1,71 +1,28 @@
-## Installation 
-```
-git clone --branch=sac_dev https://github.com/facebookresearch/rlhive.git
-conda create -n rlhive -y python=3.8
-conda activate rlhive
-bash rlhive/scripts/installation.sh
-cd rlhive
-pip install -e .
-```
+## Setting up
+1. Follow the [installation instructions](https://github.com/facebookresearch/agenthive/blob/dev/GET_STARTED.md) for AgentHive.  
+2. Download **FK-v1(expert)** and **DAPG(expert)** dataset from the [RoboHive dataset collection](https://github.com/vikashplus/robohive/wiki/7.-Datasets).
 
-## Testing installation
-```
-python -c "import mj_envs"
-MUJOCO_GL=egl sim_backend=MUJOCO python -c """
-from rlhive.rl_envs import RoboHiveEnv
-env_name = 'visual_franka_slide_random-v3'
-base_env = RoboHiveEnv(env_name,)
-print(base_env.rollout(3))
+## Behavior Cloning Running Instructions
 
-# check that the env specs are ok
-from torchrl.envs.utils import check_env_specs
-check_env_specs(base_env)
-"""
 ```
+sim_backend=MUJOCO MUJOCO_GL=egl python bc/run_bc_h5.py \
+                                    encoder = <visual-encoder> \
+                                    cam_name = <camera-name> \
+                                    env_name = <env-name> \
+                                    from_pixels = True \
+                                    data_file = <path-to-dataset>
+```
+Currently, three visual encoders are supported: [VC1](https://github.com/facebookresearch/eai-vc), [R3M](https://github.com/facebookresearch/r3m), [RRL](https://github.com/facebookresearch/RRL). To use the largest model variant of each one them set `encoder=vc1l/r3m50/rrl50`.  
+To run the experiments using privileged state information, set `from_pixels=False`.  
 
-## Launching experiments
-[NOTE] Set ulimit for your shell (default 1024): `ulimit -n 4096`  
-Set your slurm configs especially `partition` and `hydra.run.dir`   
-Slurm files are located at `sac_mujoco/config/hydra/launcher/slurm.yaml` and `sac_mujoco/config/hydra/output/slurm.yaml`  
-```
-cd scripts/sac_mujoco
-sim_backend=MUJOCO MUJOCO_GL=egl python sac.py -m hydra/launcher=slurm hydra/output=slurm
-```
 
-To run a small experiment for testing, run the following command:
-```
-cd scripts/sac_mujoco
-sim_backend=MUJOCO MUJOCO_GL=egl python sac.py -m total_frames=2000 init_random_frames=25 buffer_size=2000 hydra/launcher=slurm hydra/output=slurm
-```
+## Results
 
-## Parameter Sweep
-1. R3M and RRL experiments: `visual_transform=r3m,rrl`  
-2. Multiple seeds: `seed=42,43,44`  
-3. List of environments: 
-  ```
-task=visual_franka_slide_random-v3,\  
-     visual_franka_slide_close-v3,\  
-     visual_franka_slide_open-v3,\  
-     visual_franka_micro_random-v3,\  
-     visual_franka_micro_close-v3,\  
-     visual_franka_micro_open-v3,\  
-     visual_kitchen_knob1_off-v3,\  
-     visual_kitchen_knob1_on-v3,\  
-     visual_kitchen_knob2_off-v3,\  
-     visual_kitchen_knob2_on-v3,\  
-     visual_kitchen_knob3_off-v3,\  
-     visual_kitchen_knob3_on-v3,\  
-     visual_kitchen_knob4_off-v3,\  
-     visual_kitchen_knob4_on-v3,\  
-     visual_kitchen_light_off-v3,\  
-     visual_kitchen_light_on-v3,\  
-     visual_kitchen_sdoor_close-v3,\  
-     visual_kitchen_sdoor_open-v3,\  
-     visual_kitchen_ldoor_close-v3,\  
-     visual_kitchen_ldoor_open-v3,\  
-     visual_kitchen_rdoor_close-v3,\  
-     visual_kitchen_rdoor_open-v3,\  
-     visual_kitchen_micro_close-v3,\  
-     visual_kitchen_micro_open-v3,\  
-     visual_kitchen_close-v3  
-  ```
+<img src="https://github.com/facebookresearch/agenthive/blob/dev/scripts/figures/hms_bmlp.png" width="450">  <img src="https://github.com/facebookresearch/agenthive/blob/dev/scripts/figures/kitchen_bmlp.png" width="450">
+
+For each of the visual baselines the results are averaged over `3 camera angles X 3 seeds`.
+
+| Benchmark Suite | Dataset Type | Camera Angles | Seeds |
+| --- | --- | --- | --- |
+| Kitchen (FK-v1) | FK-v1(expert) | `left_cam`,`right_cam`,`top_cam` | `1`,`2`,`3` |
+| Hand Manipulation Suite (HMS) | DAPG(expert) | `view_1`,`view_4`,`vil_camera` | `1`,`2`,`3` |

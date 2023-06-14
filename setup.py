@@ -83,11 +83,11 @@ class clean(distutils.command.clean.clean):
                 shutil.rmtree(str(path), ignore_errors=True)
 
 
-def _check_mj_envs():
+def _check_robohive():
     import importlib
     import sys
 
-    name = "mj_envs"
+    name = "robohive"
     spam_loader = importlib.find_loader(name)
     found = spam_loader is not None
 
@@ -111,18 +111,18 @@ def _main():
     this_directory = Path(__file__).parent
     long_description = (this_directory / "README.md").read_text()
 
-    # install mj_envs locally
+    # install robohive locally
     # subprocess.run(
     #     [
     #         "git",
     #         "clone",
     #         "-c",
-    #         "submodule.mj_envs/sims/neuromuscular_sim.update=none",
+    #         "submodule.robohive/sims/neuromuscular_sim.update=none",
     #         "--branch",
     #         "non-local-install",
     #         "--recursive",
-    #         "https://github.com/vmoens/mj_envs.git",
-    #         "third_party/mj_envs",
+    #         "https://github.com/vikashplus/robohive.git",
+    #         "third_party/robohive",
     #     ]
     # )
     # subprocess.run(
@@ -135,7 +135,7 @@ def _main():
     #         "third_party/rl",
     #     ]
     # )
-    # mj_env_path = os.path.join(os.getcwd(), "third_party", "mj_envs#egg=mj_envs")
+    # mj_env_path = os.path.join(os.getcwd(), "third_party", "robohive#egg=robohive")
     # rl_path = os.path.join(os.getcwd(), "third_party", "rl#egg=torchrl")
     setup(
         # Metadata
@@ -160,8 +160,8 @@ def _main():
             # f"torchrl @ file://{rl_path}",
             "torchrl",
             "gym==0.13",
-            # "mj_envs",
-            # f"mj_envs @ file://{mj_env_path}",
+            # "robohive",
+            # f"robohive @ file://{mj_env_path}",
             "numpy",
             "packaging",
             "cloudpickle",
@@ -182,5 +182,5 @@ if __name__ == "__main__":
     write_version_file()
     print("Building wheel {}-{}".format(package_name, version))
     print(f"BUILD_VERSION is {os.getenv('BUILD_VERSION')}")
-    # _check_mj_envs()
+    # _check_robohive()
     _main()

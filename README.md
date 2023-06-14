@@ -1,13 +1,13 @@
-# RLHive
+# AgentHive
 
-RLHive provides the primitives and helpers for a seamless usage of robohive within TorchRL.
+AgentHive provides the primitives and helpers for a seamless usage of robohive within TorchRL.
 
 ## Overview
-RLHive provides the tools for offline and online execution
+AgentHive provides the tools for offline and online execution
 
 ### Environment wrappers
 
-RLHive provides environment wrappers specifically designed to work with RoboHive
+AgentHive provides environment wrappers specifically designed to work with RoboHive
 gym environment.
 Find examples in `test/test_envs.py`.
 
@@ -75,7 +75,7 @@ as follows:
 ```python
 import tqdm
 from torchrl.collectors.collectors import MultiaSyncDataCollector, RandomPolicy
-from rlhive.rl_envs import RoboHiveEnv
+from agenthive.rl_envs import RoboHiveEnv
 from torchrl.envs import ParallelEnv, TransformedEnv, GrayScale, ToTensorImage, Resize, ObservationNorm, EnvCreator, Compose, CatFrames
 
 if __name__ == '__main__':
@@ -113,14 +113,14 @@ torchrl examples:
 
 ## Execution
 
-RLHive is optimized for the `MUJOCO` backend. Make sure to set the `sim_backend` environment variable to `"MUJOCO"`
+AgentHive is optimized for the `MUJOCO` backend. Make sure to set the `sim_backend` environment variable to `"MUJOCO"`
 before running the code:
 ```
 sim_backend=MUJOCO python script.py
 ```
 
 ## Installation
-RLHive has two core dependencies: torchrl and RoboHive. RoboHive relies on mujoco 
+AgentHive has two core dependencies: torchrl and RoboHive. RoboHive relies on mujoco 
 and mujoco-py for physics simulation and rendering. As of now, RoboHive requires 
 you to use the old mujoco bindings as well as the v0.13 of gym.
 TorchRL provides [detailed instructions](https://pytorch.org/rl/reference/generated/knowledge_base/MUJOCO_INSTALLATION.html#installing-mujoco). 
