@@ -19,7 +19,7 @@ from batch_norm_mlp import BatchNormMLP
 from behavior_cloning import BC
 from misc import control_seed, \
         bcolors, stack_tensor_dict_list
-from torchrl.record.loggers import WandbLogger
+from torchrl.record.loggers.wandb import WandbLogger
 from robohive.logger.grouped_datasets import Trace as Trace
 
 def evaluate_policy(
@@ -275,14 +275,14 @@ def main(job_data: DictConfig):
 
         policy.eval()
         _, success_rate =  evaluate_policy(
-                                policy=policy,
                                 env=env,
+                                policy=policy,
+                                eval_logger=logger,
                                 epoch=ind+job_data['eval_every_n'],
                                 num_episodes=job_data['eval_traj'],
-                                device='cpu', ## has to be one cpu??
-                                eval_logger=logger,
                                 seed=job_data['seed'] + 123,
                                 verbose=True,
+                                device='cpu',
         )
         policy.to(job_data['device'])
         exp_end = time.time()
