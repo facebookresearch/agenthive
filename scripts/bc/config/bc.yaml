@@ -4,7 +4,7 @@ encoder: r3m50
 cam_name: right_cam
 from_pixels: True
 env_name: FK1_Knob1OnRandom_v2d-v4
-data_file: /home/rutavms/data/robohive/FK1-v4/${env_name}/seed${seed}/${env_name}_trace.h5
+data_file: <dataset-path>
 
 bc_epochs: 500
 bc_batch_size: 128
@@ -15,13 +15,12 @@ min_log_std: -3.0
 
 eval_traj: 25
 eval_every_n: 50
-use_bmlp: true
-wandb_entity: "rutavms"
-wandb_mode: "online"
-wandb_project: "temp"
+wandb_entity: "robohive"
+wandb_mode: "offline"
+wandb_project: "robohive"
 
 hydra:
     run:
-        dir: experiments/${env_name}_bmlp${use_bmlp}_pixel${from_pixels}_${cam_name}_seed${seed}
+        dir: experiments/${env_name}_pixel${from_pixels}_${cam_name}_seed${seed}
     job:
         chdir: True
