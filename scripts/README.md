@@ -1,6 +1,6 @@
 ## Setting up
 1. Follow the [installation instructions](https://github.com/facebookresearch/agenthive/blob/dev/GET_STARTED.md) for AgentHive.  
-2. Download **FK-v1(expert)** and **DAPG(expert)** dataset from the [RoboHive dataset collection](https://github.com/vikashplus/robohive/wiki/7.-Datasets).
+2. Download **FK-v1(expert)** and **DAPG(expert)** dataset from the RoboHive dataset collection - [RoboSet](https://github.com/vikashplus/robohive/wiki/7.-Datasets).
 
 ## Behavior Cloning Running Instructions
 
