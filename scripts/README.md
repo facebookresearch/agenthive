@@ -18,7 +18,9 @@ To run the experiments using privileged state information, set `from_pixels=Fals
 
 ## Results
 
-For each of the baselines the results are averaged over `3 camera angles X 3 seeds`.
+<img src="https://github.com/facebookresearch/agenthive/blob/dev/scripts/figures/hms_bmlp.png" width="450">  <img src="https://github.com/facebookresearch/agenthive/blob/dev/scripts/figures/kitchen_bmlp.png" width="450">
+
+For each of the visual baselines the results are averaged over `3 camera angles X 3 seeds`.
 
 | Benchmark Suite | Dataset Type | Camera Angles | Seeds |
 | --- | --- | --- | --- |
