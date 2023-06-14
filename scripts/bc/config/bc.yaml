@@ -1,0 +1,27 @@
+seed: 1
+device: 'cuda'
+encoder: r3m50
+cam_name: right_cam
+from_pixels: True
+env_name: FK1_Knob1OnRandom_v2d-v4
+data_file: /home/rutavms/data/robohive/FK1-v4/${env_name}/seed${seed}/${env_name}_trace.h5
+
+bc_epochs: 500
+bc_batch_size: 128
+bc_lr: 1e-4
+policy_size: [256, 256]
+init_log_std: -1.0
+min_log_std: -3.0
+
+eval_traj: 25
+eval_every_n: 50
+use_bmlp: true
+wandb_entity: "rutavms"
+wandb_mode: "online"
+wandb_project: "temp"
+
+hydra:
+    run:
+        dir: experiments/${env_name}_bmlp${use_bmlp}_pixel${from_pixels}_${cam_name}_seed${seed}
+    job:
+        chdir: True
