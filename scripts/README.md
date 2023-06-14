@@ -1,8 +1,16 @@
-## Setting up
-1. Follow the [installation instructions](https://github.com/facebookresearch/agenthive/blob/dev/GET_STARTED.md) for AgentHive.  
-2. Download **FK-v1(expert)** and **DAPG(expert)** dataset from the [RoboHive dataset collection](https://github.com/vikashplus/robohive/wiki/7.-Datasets).
+# AgentHive
 
-## Behavior Cloning Running Instructions
+AgentHive provides the primitives and helpers for a seamless usage of robohive within TorchRL.
+
+## Installation
+1. Install [RoboHive](https://github.com/vikashplus/robohive) along with the Visual Encoders.  
+```
+pip install robohive[mujoco, encoders]
+```  
+3. Follow the [installation instructions](https://github.com/facebookresearch/agenthive/blob/dev/GET_STARTED.md) for AgentHive.  
+4. Download **FK-v1(expert)** and **DAPG(expert)** dataset from the [RoboHive dataset collection](https://github.com/vikashplus/robohive/wiki/7.-Datasets).
+
+## Visual Imitation Learning
 
 ```
 sim_backend=MUJOCO MUJOCO_GL=egl python bc/run_bc_h5.py \
