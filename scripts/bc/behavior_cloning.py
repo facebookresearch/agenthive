@@ -7,7 +7,6 @@ logging.disable(logging.CRITICAL)
 import numpy as np
 import torch
 import time as timer
-from logger import DataLog
 from tqdm import tqdm
 
 from misc import tensorize

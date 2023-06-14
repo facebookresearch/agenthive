@@ -4,7 +4,6 @@ Job script to learn policy using BC
 
 import os
 import time
-import copy
 from os import environ
 environ['CUDA_DEVICE_ORDER']='PCI_BUS_ID'
 environ['MKL_THREADING_LAYER']='GNU'
@@ -12,19 +11,16 @@ import pickle
 import yaml
 import hydra
 import gym
-import torch
 import wandb
 import numpy as np
 from omegaconf import DictConfig, OmegaConf, ListConfig
 
-from gaussian_mlp import MLP
 from batch_norm_mlp import BatchNormMLP
 from behavior_cloning import BC
-from misc import control_seed, NpEncoder, bcolors, \
-        stack_tensor_dict_list
+from misc import control_seed, \
+        bcolors, stack_tensor_dict_list
 from torchrl.record.loggers import WandbLogger
 from robohive.logger.grouped_datasets import Trace as Trace
-from robohive.envs.env_base import MujocoEnv
 
 def evaluate_policy(
             policy,
@@ -101,9 +97,6 @@ class ObservationWrapper:
     def __init__(self, env_name, visual_keys, encoder):
         self.env = gym.make(env_name, visual_keys=visual_keys)
         self.horizon = self.env.horizon
-        #assert len(self.env.visual_keys) == 1 or len(self.env.visual_keys) == 0, f"Wrapper supports only envs with \
-        #                no visual keys or one. Current visual keys {self.env.visual_keys}"
-
 
     def reset(self, **kwargs):
         obs = self.env.reset(**kwargs)
@@ -174,7 +167,7 @@ def main(job_data: DictConfig):
     #exp_name = OUT_DIR.split('/')[-1] ## TODO: Customizer for logging
     # Unpack args and make files for easy access
     #logger = DataLog()
-    exp_name = job_data['env_name'] + '_bmlp' + str(job_data['use_bmlp']) + '_pixels' + str(job_data['from_pixels']) + '_' + job_data['encoder']
+    exp_name = job_data['env_name'] + '_pixels' + str(job_data['from_pixels']) + '_' + job_data['encoder']
     logger = WandbLogger(
         exp_name=exp_name,
         config=job_data,
@@ -208,7 +201,6 @@ def main(job_data: DictConfig):
     control_seed(SEED)
     env.seed(SEED)
     paths_trace = Trace.load(job_data['data_file'])
-    #/home/rutavms/data/robohive/FK1-v4/FK1_Knob1OnRandom_v2d-v4/seed1/FK1_Knob1OnRandom_v2d-v4_trace.h5
 
     bc_paths = []
     for key, path in paths_trace.items():
@@ -246,46 +238,23 @@ def main(job_data: DictConfig):
     observation_dim = bc_paths[0]['observations'].shape[-1]
     action_dim = bc_paths[0]['actions'].shape[-1]
     print(f'Policy obs dim {observation_dim} act dim {action_dim}')
-    set_transforms = True
-    if job_data['use_bmlp']:
-        policy = BatchNormMLP(
-                        None,
-                        seed=SEED,
-                        action_dim=action_dim,
-                        observation_dim=observation_dim,
-                        hidden_sizes=tuple(job_data['policy_size']),
-                        init_log_std=job_data['init_log_std'],
-                        min_log_std=job_data['min_log_std'],
-                        device=job_data['device'],
-        )
-        set_transforms = False
-    else:
-        policy = MLP(
-                        None,
-                        seed=SEED,
-                        action_dim=action_dim,
-                        observation_dim=observation_dim,
-                        hidden_sizes=job_data['policy_size'],
-                        init_log_std=job_data['init_log_std'],
-                        min_log_std=job_data['min_log_std'],
-        )
-        set_transforms = True
+    policy = BatchNormMLP(
+                    None,
+                    seed=SEED,
+                    action_dim=action_dim,
+                    observation_dim=observation_dim,
+                    hidden_sizes=tuple(job_data['policy_size']),
+                    init_log_std=job_data['init_log_std'],
+                    min_log_std=job_data['min_log_std'],
+                    device=job_data['device'],
+    )
+    set_transforms = False
 
     # ===============================================================================
     # Model training
     # ===============================================================================
     print(f"{bcolors.OKBLUE}Training BC{bcolors.ENDC}")
     policy.to(job_data['device'])
-    #evaluate_policy(
-    #                        policy=policy,
-    #                        env=env,
-    #                        epoch=0,
-    #                        num_episodes=job_data['eval_traj'],
-    #                        device='cpu', ## has to be one cpu??
-    #                        eval_logger=logger,
-    #                        seed=job_data['seed'] + 123,
-    #                        verbose=False,
-    #)
 
     bc_agent = BC(
                     bc_paths,
