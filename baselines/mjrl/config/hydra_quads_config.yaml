@@ -1,0 +1,49 @@
+default:
+    - override hydra/output: self
+    - override hydra/launcher: self
+
+# general inputs
+env               :   Quads-v0      # placeholder name
+algorithm         :   NPG
+seed              :   123
+sample_mode       :   trajectories
+rl_num_traj       :   96
+rl_num_samples    :   0                       # will be ignored when sample_mode=trajectories
+num_cpu           :   12
+rl_num_iter       :   20001
+save_freq         :   100
+eval_rollouts     :   24
+exp_notes         :  'J2g: Done was off. Higer height, Lower xy target. J2f: Stricter height penalty. J2e: Target angles now are (-np.pi/6, 4*np.pi/3). BugFix in the done. J2d: Target angles now are (-np.pi/6, 2*np.pi/3) J2c: Heading was too -ve. trying 5(1+heading). upright2, failling100. J2b: Less done penalty. J2a: Orient init. Ported from Robel (not roel dev). J0e: Root pos in world co-ordiante. J0d: H 160, automatic distance computation for bonus (dk_target_dist_cost: 4.0, dk_upright: 1.0, dk_falling: 100.0, dk_heading: 2.0, dk_height: 0.5) J0c: boosting rewards for target error to 10. J0b: lower penalty on upright and height'
+# exp_notes         :  'J1c: Run it for way longer with higher init_std. J1b: (using stand configs) J1a: Stand init(was using walk config) . Ported from Robel (not roel dev). J0e: Root pos in world co-ordiante. J0d: H 160, automatic distance computation for bonus (dk_target_dist_cost: 4.0, dk_upright: 1.0, dk_falling: 100.0, dk_heading: 2.0, dk_height: 0.5) J0c: boosting rewards for target error to 10. J0b: lower penalty on upright and height'
+# exp_notes         :  'J0f: More seeds on previous with higher init_std J0e: Root pos in world co-ordiante. J0d: H 160, automatic distance computation for bonus (dk_target_dist_cost: 4.0, dk_upright: 1.0, dk_falling: 100.0, dk_heading: 2.0, dk_height: 0.5) J0c: boosting rewards for target error to 10. J0b: lower penalty on upright and height'
+
+# RL parameters (all params related to PG, value function etc.)
+policy_size       :   (64, 64)
+init_log_std      :   -0.1
+min_log_std       :   -2.0
+vf_hidden_size    :   (128, 128)
+vf_batch_size     :   64
+vf_epochs         :   2
+vf_learn_rate     :   1e-3
+rl_step_size      :   0.05
+rl_gamma          :   0.995
+rl_gae            :   0.97
+
+# Algorithm hyperparameters : if alg requires additional params, can be specified here (or defaults will be used)
+
+alg_hyper_params  :   {'device': 'cpu'}
+
+# general outputs
+job_dir           : '.'
+job_name          : dkitty_stand
+suite_name        : quads
+
+wandb_params:
+    use_wandb     : True
+    wandb_user    : vikashplus
+    wandb_project : quads
+    wandb_exp     : ${job_name}
+
+hydra:
+    job:
+        name: ${env}

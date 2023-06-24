@@ -1,0 +1,8 @@
+# @package _global_
+hydra:
+  run:
+    dir: /checkpoint/${oc.env:USER}/${job_name}/${suite_name}/${hydra.job.name}/${now:%Y-%m-%d}_${now:%H-%M-%S}
+    subdir: ${hydra.job.num}_${hydra.job.override_dirname}as
+  sweep:
+    dir: /checkpoint/${oc.env:USER}/${job_name}/${suite_name}/${hydra.job.name}/${now:%Y-%m-%d}_${now:%H-%M-%S}
+    subdir: ${hydra.job.num}_${hydra.job.override_dirname}

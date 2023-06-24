@@ -1,0 +1,9 @@
+# @package _global_
+hydra:
+  run:
+    dir: ${oc.env:HOME}/${job_dir}/${job_name}/${suite_name}/${hydra.job.name}/${now:%Y-%m-%d}_${now:%H-%M-%S}
+    # dir: ${oc.env:HOME}/${job_dir}/${job_name}${now:%Y-%m-%d}_${now:%H-%M-%S}
+    subdir: '.'
+  sweep:
+    dir: ${oc.env:HOME}/${job_dir}/${job_name}/${suite_name}/${hydra.job.name}/${now:%Y-%m-%d}_${now:%H-%M-%S}
+    subdir: '.'
