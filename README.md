@@ -1,9 +1,21 @@
 # AgentHive
 
-AgentHive provides the primitives and helpers for a seamless usage of robohive within TorchRL.
+AgentHive is the agents module for [RoboHive](https://sites.google.com/view/robohive). It contains trained agents as well as the primitives and helper scripts to train new agents for RoboHive environments.
 
 ## Overview
-AgentHive provides the tools for offline and online execution
+AgentHive provides the tools and helper scripts for training agents as well as offline and online execution of [pre-packaged trained agents](agents). RoboHive can be used with any openAI-Gym compatible algorithmic baselines to train agents for its environment. RoboHive developers have used the following baseline frameworks during developments. The with a goal of expanding over time.
+1. [TorchRL](https://pytorch.org/rl/)
+2. [mjRL](https://github.com/aravindr93/mjrl)
+3. [Stable Baselines](https://github.com/DLR-RM/stable-baselines3)
+
+## Pretrained baselines
+AgentHive comes prepackaged with as a set of pre-trained baselines. The goal of these baselines is to provide a mechanism for used to enjoy out-of-box capabilities wit RoboHive. We are continuously accepting contributions to grow our pre-trained collections, please send us a pull request.
+- [Visual Imitation Learning Baselines](scripts)
+- [Natural Policy Gradients Baselines](agents)
+- [Trajectory Optimization](agents)
+
+
+## Agent Utilities
 
 ### Environment wrappers
 
@@ -79,7 +91,7 @@ from agenthive.rl_envs import RoboHiveEnv
 from torchrl.envs import ParallelEnv, TransformedEnv, GrayScale, ToTensorImage, Resize, ObservationNorm, EnvCreator, Compose, CatFrames
 
 if __name__ == '__main__':
-    # create a parallel env with 4 envs running independendly. 
+    # create a parallel env with 4 envs running independendly.
     # I put the 'cuda:0' device to show how to create an env on cuda (ie: the output tensors will be on cuda)
     # but this will be overwritten in the collector below
     penv = ParallelEnv(4, EnvCreator(lambda: RoboHiveEnv('FrankaReachRandom_v2d-v0', device='cuda:0', from_pixels=True)))
@@ -120,10 +132,10 @@ sim_backend=MUJOCO python script.py
 ```
 
 ## Installation
-AgentHive has two core dependencies: torchrl and RoboHive. RoboHive relies on mujoco 
-and mujoco-py for physics simulation and rendering. As of now, RoboHive requires 
+AgentHive has two core dependencies: torchrl and RoboHive. RoboHive relies on mujoco
+and mujoco-py for physics simulation and rendering. As of now, RoboHive requires
 you to use the old mujoco bindings as well as the v0.13 of gym.
-TorchRL provides [detailed instructions](https://pytorch.org/rl/reference/generated/knowledge_base/MUJOCO_INSTALLATION.html#installing-mujoco). 
+TorchRL provides [detailed instructions](https://pytorch.org/rl/reference/generated/knowledge_base/MUJOCO_INSTALLATION.html#installing-mujoco).
 on how to setup an environment with the old mujoco bindings.
 
 See also the [Getting Started](GET_STARTED.md) markdown for more info on setting up your env.

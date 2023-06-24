@@ -4,7 +4,7 @@
 ## Installing dependencies
 
 The following code snippet installs the nightly versions of the libraries. For a faster installation, simply install `torchrl-nightly` and `tensordict-nightly`.
-However, we recommand using the `git` version as they will be more likely up-to-date with the latest features, and as we are
+However, we recommend using the `git` version as they will be more likely up-to-date with the latest features, and as we are
 actively working on fine-tuning torchrl for RoboHive usage, keeping the latest version of the library may be beneficial.
 
 ```shell
@@ -85,7 +85,7 @@ Here are the details on how to set up your logger: wandb can work in one of two
 modes: `online`, where you need an account and the machine you're running your experiment on must be
 connected to the cloud, and `offline` where the logs are stored locally.
 The latter is more general and easier to collect, hence we suggest you use this mode instead.
-To configure and use your logger using TorchRL, procede as follows (notice that 
+To configure and use your logger using TorchRL, procede as follows (notice that
 using the plain wandb API is very similar to this, TorchRL's conveniance just relies in the
 interchangeability with other loggers):
 
