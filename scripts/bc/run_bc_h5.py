@@ -97,6 +97,7 @@ class ObservationWrapper:
     def __init__(self, env_name, visual_keys, encoder):
         self.env = gym.make(env_name, visual_keys=visual_keys)
         self.horizon = self.env.horizon
+        self.encoder = encoder
 
     def reset(self, **kwargs):
         obs = self.env.reset(**kwargs)
@@ -107,6 +108,9 @@ class ObservationWrapper:
         return self.get_obs(observation), reward, terminated, info
 
     def get_obs(self, observation=None):
+        if self.encoder == 'proprio':
+            proprio_vec = self.env.get_proprioception()[1]
+            return proprio_vec
         if len(self.env.visual_keys) > 0:
             visual_obs = self.env.get_exteroception()
             final_visual_obs = None
@@ -134,9 +138,11 @@ class ObservationWrapper:
 def make_env(env_name, cam_name, encoder, from_pixels):
     if from_pixels:
         visual_keys = []
-        assert encoder in ["vc1s", "vc1l", "r3m18", "rrl18", "rrl50", "r3m50", "2d", "1d"]
+        assert encoder in ["vc1s", "vc1l", "r3m18", "rrl18", "rrl50", "r3m50", "2d", "1d", "proprio"]
         if encoder == "1d" or encoder == "2d":
             visual_keys = [f'rgb:{cam_name}:84x84:{encoder}']
+        elif encoder == 'proprio':
+            visual_keys = []
         else:
             # cam_name is a list of cameras
             if type(cam_name) == ListConfig:
