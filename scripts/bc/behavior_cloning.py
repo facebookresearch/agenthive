@@ -134,8 +134,6 @@ class BC:
 
             if self.save_logs:
                 self.logger.log_scalar("train/bc_loss", avg_loss, step=ep+1)
-        params_after_opt = self.policy.get_param_values()
-        self.policy.set_param_values(params_after_opt, set_new=True, set_old=True)
 
         # log stats after
         if self.save_logs:

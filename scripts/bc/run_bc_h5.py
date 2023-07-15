@@ -16,6 +16,7 @@ import numpy as np
 from omegaconf import DictConfig, OmegaConf, ListConfig
 
 from batch_norm_mlp import BatchNormMLP
+from gmm_policy import GMMPolicy
 from behavior_cloning import BC
 from misc import control_seed, \
         bcolors, stack_tensor_dict_list
@@ -244,15 +245,17 @@ def main(job_data: DictConfig):
     observation_dim = bc_paths[0]['observations'].shape[-1]
     action_dim = bc_paths[0]['actions'].shape[-1]
     print(f'Policy obs dim {observation_dim} act dim {action_dim}')
-    policy = BatchNormMLP(
-                    None,
-                    seed=SEED,
-                    action_dim=action_dim,
-                    observation_dim=observation_dim,
-                    hidden_sizes=tuple(job_data['policy_size']),
-                    init_log_std=job_data['init_log_std'],
-                    min_log_std=job_data['min_log_std'],
-                    device=job_data['device'],
+    policy = GMMPolicy(
+                 # network_kwargs
+                 input_size=observation_dim,
+                 output_size=action_dim,
+                 hidden_size=job_data['policy_size'][0],
+                 num_layers=len(job_data['policy_size']),
+                 min_std=0.0001,
+                 num_modes=5,
+                 activation="softplus",
+                 low_eval_noise=False,
+                 # loss_kwargs
     )
     set_transforms = False
 
@@ -268,7 +271,7 @@ def main(job_data: DictConfig):
                     epochs=job_data['eval_every_n'],
                     batch_size=job_data['bc_batch_size'],
                     lr=job_data['bc_lr'],
-                    loss_type='MSE',
+                    loss_type='MLE',
                     save_logs=True,
                     logger=logger,
                     set_transforms=set_transforms,
