@@ -1,0 +1,30 @@
+# Performance of NPG on HMS tasks for V0.5 release
+- V0 envs are the original envs released with the [DAPG paper](https://sites.google.com/view/deeprl-dexterous-manipulation)
+- V1 envs are new version of the same envs. Beyond unifying into a central codebase, main feature upgrade is that rewards are calculated from obs_dict. This was needed especially for MBRL.
+
+## Results
+Comparision: V0.4 vs V0.5 (3 seeds)
+- [Final performance comparision](FinalPerf-NPG.pdf)
+- [Training curves comparision](TrainPerf-NPG.pdf)
+
+## Known Issues
+- N/A
+
+## Hashes
+```
+83d35df95eb64274c5e93bb32a0a4e2f6576638a (mjrl)
+4b76549ad07a57638724bb75e2fb2fd939f60085 (robohive)
+2ef4b752e85782f84fa666fce10de5231cc5c917 robohive/simhive/Adroit (v0.1-2-g2ef4b75)
+46edd9c361061c5d81a82f2511d4fbf76fead569 robohive/simhive/YCB_sim (heads/main)
+b8531308fa34d2bd637d9df468455ae36e2ebcd3 robohive/simhive/dmanus_sim (heads/correct_bracket)
+58d561fa416b6a151761ced18f2dc8f067188909 robohive/simhive/fetch_sim (heads/master)
+82aaf3bebfa29e00133a6eebc7684e793c668fc1 robohive/simhive/franka_sim (v0.1-7-g82aaf3b)
+afb802750acb97f253b2f6fc6e915627d04fcf67 robohive/simhive/furniture_sim (v0.1-20-gafb8027)
+cde1442b92523feb26786a38b0b11ba2a9429dd3 robohive/simhive/myo_sim (heads/main)
+87cd8dd5a11518b94fca16bc22bb04f6836c6aa7 robohive/simhive/object_sim (87cd8dd)
+68030f77f73e247518f9620ab0eed01286ace7b4 robohive/simhive/robel_sim (heads/experimental-hand)
+854d0bfb4e48b076e1d2aa4566c2e23bba17ebae robohive/simhive/robotiq_sim (heads/main)
+affaf56d56be307538e5eed34f647586281762b2 robohive/simhive/sawyer_sim (heads/master)
+f73acd52f3546939828d750744704603de03edf3 sims/scene_sim (heads/master)
+49e689ee8d18f5e506ba995aac99822b66700b2b robohive/simhive/trifinger_sim (heads/main)
+```

@@ -1,0 +1,33 @@
+default:
+- override hydra/output: local
+- override hydra/launcher: local
+env: relocate-v1
+algorithm: NPG
+seed: 3
+sample_mode: trajectories
+rl_num_traj: 100
+rl_num_samples: 0
+num_cpu: 10
+rl_num_iter: 1001
+save_freq: 100
+eval_rollouts: 10
+exp_notes: J2:v0.5baselines. J1:V0.4wrap Baseline, J0:V0.3 Baselines
+policy_size: (32, 32)
+init_log_std: -0.251
+min_log_std: -1.0
+vf_hidden_size: (128, 128)
+vf_batch_size: 64
+vf_epochs: 2
+vf_learn_rate: 0.001
+rl_step_size: 0.1
+rl_gamma: 0.995
+rl_gae: 0.97
+alg_hyper_params:
+  device: cpu
+job_name: v0.5baselines
+suite_name: hms
+wandb_params:
+  use_wandb: true
+  wandb_user: vikashplus
+  wandb_project: v0.5_baselines
+  wandb_exp: v0.5_relocate-v1
