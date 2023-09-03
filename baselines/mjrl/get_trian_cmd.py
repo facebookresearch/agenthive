@@ -60,7 +60,7 @@ def get_train_cmd(suite, launcher, config_name, config_path):
 
     # Get final training command
     print(f"To train NPG via mjrl on {suite} suite, run the following command: ")
-    print(f"python hydra_mjrl_launcher.py --config-path {config_path} --config_name {config_name} {launcher_spec} env={envs} seed=1,2,3")
+    print(f"python hydra_mjrl_launcher.py --config-path {config_path} --config-name {config_name} {launcher_spec} env={envs} seed=1,2,3")
 
 
 if __name__ == '__main__':
