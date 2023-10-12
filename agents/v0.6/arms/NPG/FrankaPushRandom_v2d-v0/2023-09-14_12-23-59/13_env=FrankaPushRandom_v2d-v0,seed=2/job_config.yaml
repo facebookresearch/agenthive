@@ -1,0 +1,34 @@
+default:
+- override hydra/output: local
+- override hydra/launcher: local
+env: FrankaPushRandom_v2d-v0
+algorithm: NPG
+seed: 2
+sample_mode: trajectories
+rl_num_traj: 6
+rl_num_samples: 0
+num_cpu: 10
+rl_num_iter: 500
+save_freq: 50
+eval_rollouts: 100
+exp_notes: J5:v0.5baselines. J1:V0.4wrap Baseline, J0:V0.3 Baseline
+policy_size: (64, 64)
+init_log_std: -0.1
+min_log_std: -1.0
+vf_hidden_size: (128, 128)
+vf_batch_size: 64
+vf_epochs: 2
+vf_learn_rate: 0.001
+rl_step_size: 0.05
+rl_gamma: 0.995
+rl_gae: 0.97
+alg_hyper_params:
+  device: cpu
+job_dir: .
+job_name: v0.6baselines
+suite_name: arms
+wandb_params:
+  use_wandb: true
+  wandb_user: jayluvsgeography
+  wandb_project: v0.6_baselines_arms
+  wandb_exp: v0.6_FrankaPushRandom_v2d-v0_2

@@ -1,0 +1,15 @@
+Traceback (most recent call last):
+  File "/private/home/jayvakil/.conda/envs/track/lib/python3.8/runpy.py", line 194, in _run_module_as_main
+    return _run_code(code, main_globals, None,
+  File "/private/home/jayvakil/.conda/envs/track/lib/python3.8/runpy.py", line 87, in _run_code
+    exec(code, run_globals)
+  File "/private/home/jayvakil/.conda/envs/track/lib/python3.8/site-packages/submitit/core/_submit.py", line 11, in <module>
+    submitit_main()
+  File "/private/home/jayvakil/.conda/envs/track/lib/python3.8/site-packages/submitit/core/submission.py", line 72, in submitit_main
+    process_job(args.folder)
+  File "/private/home/jayvakil/.conda/envs/track/lib/python3.8/site-packages/submitit/core/submission.py", line 47, in process_job
+    raise RuntimeError(
+RuntimeError: Waited for 60 seconds but could not find submitted jobs in path:
+/checkpoint/jayvakil/v0.6baselines/hms/hms-v1/2023-09-14_12-24-42/.submitit/15906616_85/15906616_85_submitted.pkl
+srun: error: learnfair0424: task 0: Exited with exit code 1
+srun: Terminating StepId=15929637.0

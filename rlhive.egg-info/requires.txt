@@ -1,0 +1,8 @@
+torch
+torchrl
+gym==0.13
+numpy
+packaging
+cloudpickle
+hydra-core
+dm_control
