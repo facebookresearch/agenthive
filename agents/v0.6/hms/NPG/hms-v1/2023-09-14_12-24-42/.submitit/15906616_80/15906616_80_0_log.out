@@ -1,2 +1,0 @@
-submitit INFO (2023-09-18 05:07:53,139) - Starting with JobEnvironment(job_id=15906616_80, hostname=learnfair2297, local_rank=0(1), node=0(1), global_rank=0(1))
-submitit INFO (2023-09-18 05:07:53,139) - Loading pickle: /checkpoint/jayvakil/v0.6baselines/hms/hms-v1/2023-09-14_12-24-42/.submitit/15906616_80/15906616_80_submitted.pkl
