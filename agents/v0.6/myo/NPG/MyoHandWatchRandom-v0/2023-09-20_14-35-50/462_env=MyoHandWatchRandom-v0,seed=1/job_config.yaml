@@ -1,0 +1,35 @@
+default:
+- override hydra/output: local
+- override hydra/launcher: local
+env: MyoHandWatchRandom-v0
+algorithm: NPG
+seed: 1
+sample_mode: trajectories
+rl_num_traj: 4
+rl_num_samples: 0
+num_cpu: 4
+rl_num_iter: 10000
+save_freq: 1
+eval_rollouts: 10
+exp_notes: '<J6:v0.5baselines. J5:V0.4wrap Baseline,J04: RandomEnv ((-.5, -2.5, .8),
+  (0.5, 0.5, 1.0))> <J03:''pelvis'': ((-.005, -.005, .75), (0.005, 0.005, .9))> <J02:-100.*act_mag
+  and low log-std><J01:-10000.*act_mag and low log-std>'
+policy_size: (32, 32)
+init_log_std: -0.5
+min_log_std: -1.0
+vf_hidden_size: (128, 128)
+vf_batch_size: 64
+vf_epochs: 2
+vf_learn_rate: 0.001
+rl_step_size: 0.1
+rl_gamma: 0.995
+rl_gae: 0.97
+alg_hyper_params:
+  device: cpu
+job_name: v0.6baselines
+suite_name: myo
+wandb_params:
+  use_wandb: true
+  wandb_user: jayluvsgeography
+  wandb_project: v0.6_baselines_myo_09_20
+  wandb_exp: v0.6_MyoHandWatchRandom-v0_1
