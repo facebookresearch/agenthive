@@ -1,0 +1,4 @@
+Iter | Sampling Pol | Evaluation Pol | Best (Sampled) 
+   0 -1.87 -1.84 -100000000.00 
+   1 -1.73 -1.83 -1.87 
+   2 -1.82 -1.83 -1.73 
