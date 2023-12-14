@@ -7,7 +7,7 @@ from torchrl.envs.transforms import CatTensors, Compose, R3MTransform, \
     TransformedEnv
 from torchrl.trainers.helpers.envs import LIBS
 
-from torchrl.envs import RobohiveEnv  # noqa
+from torchrl.envs import RoboHiveEnv  # noqa
 
 
 def make_r3m_env(env_name, model_name="resnet50", download=True, **kwargs):
