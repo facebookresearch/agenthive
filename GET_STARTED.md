@@ -3,21 +3,18 @@
 
 ## Installing dependencies
 
-The following code snippet installs the nightly versions of the libraries. For a faster installation, simply install `torchrl-nightly` and `tensordict-nightly`.
-However, we recommend using the `git` version as they will be more likely up-to-date with the latest features, and as we are
-actively working on fine-tuning torchrl for RoboHive usage, keeping the latest version of the library may be beneficial.
+The following code snippet installs the nightly versions of the libraries. For a faster installation, simply install `torchrl` and `tensordict` using `pip`.
 
 ```shell
-module load cuda/11.6 cudnn/v8.4.1.50-cuda.11.6
+module load cuda/12.1 # if available
 
 export MJENV_LIB_PATH="robohive"
 conda create -n agenthive -y python=3.8
 conda activate agenthive
 
-python3 -mpip install --pre torch torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/nightly/cu116
+pip3 install torch torchvision torchaudio
 python3 -mpip install wandb 'robohive[mujoco, encoders]'  # installing robohive along with visual encoders
-python3 -mpip install git+https://github.com/pytorch-labs/tensordict  # or stable or nightly with pip install tensordict(-nightly)
-python3 -mpip install git+https://github.com/pytorch/rl.git  # or stable or nightly with pip install torchrl(-nightly)
+python3 -mpip install tensordict torchrl
 python3 -mpip install git+https://github.com/facebookresearch/agenthive.git  # or stable or nightly with pip install torchrl(-nightly)
 
 ```
@@ -29,9 +26,9 @@ You can run these two commands to check that installation was successful:
 ```shell
 python -c "import robohive"
 MUJOCO_GL=egl sim_backend=MUJOCO python -c """
-from rlhive.rl_envs import RoboHiveEnv
+from torchrl.envs import RoboHiveEnv
 env_name = 'visual_franka_slide_random-v3'
-base_env = RoboHiveEnv(env_name,)
+base_env = RoboHiveEnv(env_name)
 print(base_env.rollout(3))
 
 # check that the env specs are ok
@@ -47,7 +44,7 @@ Here's a step-by-step example of how to create an env, pass the output through R
 For more info, check the [torchrl environments doc](https://pytorch.org/rl/reference/envs.html).
 
 ```python
-from rlhive.rl_envs import RoboHiveEnv
+from torchrl.envs import RoboHiveEnv
 from torchrl.envs import ParallelEnv, TransformedEnv, R3MTransform
 import torch
 
