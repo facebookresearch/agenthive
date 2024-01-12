@@ -25,37 +25,46 @@ Find examples in `test/test_envs.py`.
 
 The basic usage is:
 ```python
+import robohive
+import rlhive.envs
+from torchrl.envs import RoboHiveEnv
 env = RoboHiveEnv(env_name="FrankaReachRandom_v2d-v0")
 ```
 
 The following `kitchen` and `franka` visual environments should be used (they will be executed without flattening/unflattening of
 the images which is an expensive process):
 ```python
-env_list = ["visual_franka_slide_random-v3",
-   "visual_franka_slide_close-v3",
-   "visual_franka_slide_open-v3",
-   "visual_franka_micro_random-v3",
-   "visual_franka_micro_close-v3",
-   "visual_franka_micro_open-v3",
-   "visual_kitchen_knob1_off-v3",
-   "visual_kitchen_knob1_on-v3",
-   "visual_kitchen_knob2_off-v3",
-   "visual_kitchen_knob2_on-v3",
-   "visual_kitchen_knob3_off-v3",
-   "visual_kitchen_knob3_on-v3",
-   "visual_kitchen_knob4_off-v3",
-   "visual_kitchen_knob4_on-v3",
-   "visual_kitchen_light_off-v3",
-   "visual_kitchen_light_on-v3",
-   "visual_kitchen_sdoor_close-v3",
-   "visual_kitchen_sdoor_open-v3",
-   "visual_kitchen_ldoor_close-v3",
-   "visual_kitchen_ldoor_open-v3",
-   "visual_kitchen_rdoor_close-v3",
-   "visual_kitchen_rdoor_open-v3",
-   "visual_kitchen_micro_close-v3",
-   "visual_kitchen_micro_open-v3",
-   "visual_kitchen_close-v3"
+env_list = [
+    "visual_motorFingerReachFixed-v0",
+    "visual_door-v1",
+    "visual_hammer-v1",
+    "visual_pen-v1",
+    "visual_relocate-v1",
+    "visual_franka_slide_random-v3",
+    "visual_franka_slide_close-v3",
+    "visual_franka_slide_open-v3",
+    "visual_franka_micro_random-v3",
+    "visual_franka_micro_close-v3",
+    "visual_franka_micro_open-v3",
+    "visual_FK1_Knob1OffRandom-v4",
+    "visual_FK1_Knob1OnRandom-v4",
+    "visual_FK1_Knob2OffRandom-v4",
+    "visual_FK1_Knob2OnRandom-v4",
+    "visual_FK1_Knob3OffRandom-v4",
+    "visual_FK1_Knob3OnRandom-v4",
+    "visual_FK1_Knob4OffRandom-v4",
+    "visual_FK1_Knob4OnRandom-v4",
+    "visual_FK1_LightOffRandom-v4",
+    "visual_FK1_LightOnRandom-v4",
+    "visual_FK1_SdoorCloseRandom-v4",
+    "visual_FK1_SdoorOpenRandom-v4",
+    "visual_FK1_LdoorCloseRandom-v4",
+    "visual_FK1_LdoorOpenRandom-v4",
+    "visual_FK1_RdoorCloseRandom-v4",
+    "visual_FK1_RdoorOpenRandom-v4",
+    "visual_FK1_MicroOpenRandom-v4",
+    "visual_FK1_MicroCloseRandom-v4",
+    "visual_FK1_RelaxRandom-v4",
 ]
 ```
 
