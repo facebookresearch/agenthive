@@ -43,7 +43,7 @@ CURR_DIR = robohive.envs.multi_task.substeps1.CURR_DIR
 
 override_keys = [
     "objs_jnt",
-    "end_effector",
+    "ee_pose",
     "knob1_site_err",
     "knob2_site_err",
     "knob3_site_err",
@@ -87,7 +87,7 @@ def register_kitchen_envs():
 
     obs_keys_wt = {
         "robot_jnt": 1.0,
-        "end_effector": 1.0,
+        "ee_pose": 1.0,
     }
     visual_obs_keys = {
         "rgb:right_cam:224x224:2d": 1.0,
@@ -126,7 +126,7 @@ def register_franka_envs():
     # Franka Appliance ======================================================================
     obs_keys_wt = {
         "robot_jnt": 1.0,
-        "end_effector": 1.0,
+        "ee_pose": 1.0,
     }
     visual_obs_keys = {
         "rgb:right_cam:224x224:2d": 1.0,
@@ -137,7 +137,10 @@ def register_franka_envs():
             new_env_name = "visual_" + env
             register_env_variant(
                 env,
-                variants={"obs_keys_wt": obs_keys_wt, "visual_keys": visual_obs_keys},
+                variants={
+                    "obs_keys_wt": obs_keys_wt,
+                    "visual_keys": list(visual_obs_keys.keys()),
+                },
                 variant_id=new_env_name,
                 override_keys=override_keys,
             )
@@ -193,7 +196,7 @@ def register_myo_envs():
                 env,
                 variants={
                     "obs_keys": [
-                        "hand_jnt",
+                        "qpos", # TODO: Check if this is correct
                     ],
                     "visual_keys": visual_keys,
                 },
